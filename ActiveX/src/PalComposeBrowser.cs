@@ -203,6 +203,7 @@ namespace PalCompose
         public async void ExecuteScript(string script)
         {
             if (_core == null) { ReportError("ExecuteScript: browser non pronto"); return; }
+            EnsureUiContext();
             try { await _core.ExecuteScriptAsync(script ?? ""); }
             catch (Exception ex) { ReportError("ExecuteScript: " + ex.Message); }
         }
@@ -226,9 +227,20 @@ namespace PalCompose
             EnsureInitialized();
         }
 
+        // Dentro FactoryTalk (applicazione non .NET) il thread dell'interfaccia non ha il contesto di
+        // sincronizzazione di WinForms: senza, dopo ogni "await" il codice riprende su un altro thread e
+        // WebView2 rifiuta le chiamate ("members can only be accessed from the UI thread").
+        private static void EnsureUiContext()
+        {
+            if (!(System.Threading.SynchronizationContext.Current is WindowsFormsSynchronizationContext))
+                System.Threading.SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
+        }
+
         private async void EnsureInitialized()
         {
             if (_initStarted || !IsHandleCreated) return;
+            if (InvokeRequired) { BeginInvoke(new Action(EnsureInitialized)); return; }
+            EnsureUiContext();
             _initStarted = true;
             try
             {
@@ -295,6 +307,7 @@ namespace PalCompose
         private async void UpdateHostScript()
         {
             if (_core == null) return;
+            EnsureUiContext();
             try
             {
                 if (_hostScriptId != null) { _core.RemoveScriptToExecuteOnDocumentCreated(_hostScriptId); _hostScriptId = null; }
