@@ -87,7 +87,7 @@ Conclusione: con il controllo attuale il ritorno dati dalla pagina può avvenire
 
 Il tag `SizeWork.Outfeed.CornerLabelling` viene letto dal VBA (costante `TAG_CORNER_LABELLING`, da verificare il percorso completo) e passato alla pagina.
 
-- `1`: etichetta ad angolo, sullo spigolo destra/alto della cassa a 0° vista dall'alto.
+- `1`: etichetta ad angolo, sullo spigolo destra/basso della cassa a 0° vista dall'alto.
 - `0`: etichetta laterale, al centro del lato destro.
 
 L'etichetta ruota con la cassa, sia nel 2D sia nel 3D. Il valore è solo letto: non viene riscritto nel PLC.

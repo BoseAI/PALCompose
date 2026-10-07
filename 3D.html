@@ -259,8 +259,8 @@
   }
 
   // ===== ETICHETTE SULLE CASSE =====
-  // Cassa a 0° vista dall'alto: lato destro = +X, lato alto (2D) = -Z.
-  // CornerLabelling = true  -> etichetta piegata sull'angolo destra/alto (metà su +X, metà su -Z)
+  // Cassa a 0° vista dall'alto: lato destro = +X, lato basso (2D) = +Z.
+  // CornerLabelling = true  -> etichetta piegata sull'angolo destra/basso (metà su +Z, metà su +X)
   // CornerLabelling = false -> etichetta laterale al centro del lato destro (+X)
   function addCaseLabels() {
     var LABEL_H = 100, LABEL_SIDE_LEN = 150, LABEL_CORNER_LEN = 100, OUT = 0.8; // mm
@@ -284,11 +284,10 @@
     var local = new THREE.Matrix4(), rot = new THREE.Matrix4();
     if (state.CornerLabelling) {
       var lc = Math.min(LABEL_CORNER_LEN, cw * 0.9, cd * 0.9);
-      // metà sul lato -Z (alto in 2D) e metà sul lato +X: la texture continua attorno allo spigolo
-      rot.makeRotationY(Math.PI);
-      parts.push([plane(lc, 0.5, 1), new THREE.Matrix4().makeTranslation((cw / 2 - lc / 2) * MM, cy * MM, (-cd / 2 - OUT) * MM).multiply(rot.clone())]);
+      // metà sul lato +Z (basso in 2D) e metà sul lato +X: la texture continua attorno allo spigolo
+      parts.push([plane(lc, 0, 0.5), new THREE.Matrix4().makeTranslation((cw / 2 - lc / 2) * MM, cy * MM, (cd / 2 + OUT) * MM)]);
       rot.makeRotationY(Math.PI / 2);
-      parts.push([plane(lc, 0, 0.5), new THREE.Matrix4().makeTranslation((cw / 2 + OUT) * MM, cy * MM, (-cd / 2 + lc / 2) * MM).multiply(rot.clone())]);
+      parts.push([plane(lc, 0.5, 1), new THREE.Matrix4().makeTranslation((cw / 2 + OUT) * MM, cy * MM, (cd / 2 - lc / 2) * MM).multiply(rot.clone())]);
     } else {
       var ls = Math.min(LABEL_SIDE_LEN, cd * 0.85);
       rot.makeRotationY(Math.PI / 2);

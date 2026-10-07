@@ -36,7 +36,7 @@ var state = {
   Approach:{x:0,y:0},
   NBoxA:0,
   NBoxB:0,
-  CornerLabelling:false, // true = etichetta ad angolo (destra + alto con cassa a 0°), false = laterale (lato destro)
+  CornerLabelling:false, // true = etichetta ad angolo (destra + basso con cassa a 0°), false = laterale (lato destro)
   Init:true,
 };
 var canvas = document.getElementById("c");
@@ -149,7 +149,7 @@ function getCaseGrid(box) {
   return best;
 }
 
-// Etichetta sulla cassa (mm): rettangolare, sul lato destro della cassa a 0° oppure piegata sull'angolo destra/alto
+// Etichetta sulla cassa (mm): rettangolare, sul lato destro della cassa a 0° oppure piegata sull'angolo destra/basso
 var LABEL_SIDE_LEN = 150;   // etichetta laterale: lunghezza sul lato
 var LABEL_CORNER_LEN = 100; // etichetta ad angolo: lunghezza su ciascuno dei due lati
 var LABEL_THICK = 14;       // spessore con cui è disegnata nella vista dall'alto
@@ -169,13 +169,13 @@ function drawCaseLabel(lw, lh) {
   ctx.lineWidth = 1.5;
   if (state.CornerLabelling) {
     var lc = Math.min(mmToPx(LABEL_CORNER_LEN), lw * 0.9, lh * 0.9);
-    ctx.beginPath(); // L sull'angolo destra/alto
-    ctx.moveTo(lw / 2, lh / 2);
-    ctx.lineTo(lw / 2, lh / 2 - lc);
-    ctx.lineTo(lw / 2 - t, lh / 2 - lc);
-    ctx.lineTo(lw / 2 - t, lh / 2 - t);
-    ctx.lineTo(lw / 2 - lc, lh / 2 - t);
-    ctx.lineTo(lw / 2 - lc, lh / 2);
+    ctx.beginPath(); // L sull'angolo destra/basso
+    ctx.moveTo(lw / 2, -lh / 2);
+    ctx.lineTo(lw / 2, -lh / 2 + lc);
+    ctx.lineTo(lw / 2 - t, -lh / 2 + lc);
+    ctx.lineTo(lw / 2 - t, -lh / 2 + t);
+    ctx.lineTo(lw / 2 - lc, -lh / 2 + t);
+    ctx.lineTo(lw / 2 - lc, -lh / 2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
