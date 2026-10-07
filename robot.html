@@ -30,7 +30,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 // ===== STATE =====
-let state = JSON.parse(localStorage.getItem("state"));
+let state = JSON.parse(sessionStorage.getItem("state"));
 
 // ===== FUNZIONI HELPER =====
 function setupButtonWithSVG3D(button, svgNormal, svgPressed) {

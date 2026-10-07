@@ -163,9 +163,12 @@
 <script src="./Functions/main.js"></script>
 <script>
 
-  let stateOld = JSON.parse(localStorage.getItem("state") || "null");
+  // Lo stato passa dalla vista 3D solo nella sessione corrente del browser: alla riapertura
+  // della schermata FT si riparte sempre dai dati del PLC
+  let stateOld = null;
+  try { stateOld = JSON.parse(sessionStorage.getItem("state") || "null"); } catch (e) { stateOld = null; }
   if (!stateOld || Object.keys(stateOld).length === 0) { updatePalletFromPLC(palletData); }
-  else { localStorage.removeItem("state"); state = stateOld; state.Init = false; }
+  else { sessionStorage.removeItem("state"); state = stateOld; state.Init = false; applyStateToUI(); selectHighestIdBox(); draw(); }
 
 </script>
 </body>

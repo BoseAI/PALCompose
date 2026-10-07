@@ -150,6 +150,14 @@ function drawBoxText(box) {
   ctx.fillText("Rot: " + box.angle + "°", textX, -textY);
 }
 
+// Ridisegno raggruppato al prossimo frame: per eventi frequenti (trascinamento, D-pad)
+var drawPending = false;
+function requestDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(function() { drawPending = false; draw(); });
+}
+
 function draw() {
   var  offsetXPerc = 0.1; 
   var  offsetYPerc = 0.1;    
@@ -210,23 +218,18 @@ function placeNextBox(type, suppressAlert) {
     var rot = rotations[i];
     var factor = TenthOfAMillimeter ? 10 : 1;
     var step = 1 / factor;
-    for (var yi = 0; yi <= (state.pallet.h - rot.h) * factor; yi++) {
-      var y = yi * step;
-      for (var xi = 0; xi <= (state.pallet.w - rot.w) * factor; xi++) {
-        var x = xi * step;
-        var candidate = {
-          x: x,
-          y: y,
-          w: rot.w,
-          h: rot.h,
-          angle: rot.angle,
-          depositType: type,
-          picktype: type  
-        };
-        if (canPlace(candidate)) { placed = candidate; break; }
-      }
-      if (placed) break;
-    }
+    placed = findFirstFit(rot, 0, factor, function(idx) { return idx * step; }, function(x, y) {
+      var candidate = {
+        x: x,
+        y: y,
+        w: rot.w,
+        h: rot.h,
+        angle: rot.angle,
+        depositType: type,
+        picktype: type
+      };
+      return canPlace(candidate) ? candidate : null;
+    });
     if (placed) break;
   }
   if (!placed) {
@@ -350,36 +353,32 @@ function autoFill() {
     // Dimensioni non valide (es. dati PLC non ancora ricevuti): evita casse di dimensione zero all'infinito
     if (!dim || !(dim.x > 0) || !(dim.y > 0)) break;
     var rotations = [ { w: dim.x, h: dim.y, angle: 0 }, { w: dim.y, h: dim.x, angle: 90 } ];
-    outerLoop:
     for (var r = 0; r < rotations.length; r++) {
       var rot = rotations[r];
-      for (var yi = 0; yi <= (state.pallet.h - rot.h) * factor; yi++) {
-        var y = yi / factor;
-        for (var xi = 0; xi <= (state.pallet.w - rot.w) * factor; xi++) {
-          var x = xi / factor;
-          var candidate = {
-            x: x,
-            y: y,
-            w: rot.w,
-            h: rot.h,
-            angle: rot.angle,
-            depositType: depositType
-          };
-          if (canPlaceWithGap(candidate, null, gap)) {
-            state.boxes.push({
-              id: nextId(),
-              x: candidate.x,
-              y: candidate.y,
-              w: candidate.w,
-              h: candidate.h,
-              angle: candidate.angle,
-              depositType: depositType,
-              picktype: depositType
-            });
-            placedSomething = true;
-            break outerLoop;
-          }
-        }
+      var candidate = findFirstFit(rot, gap, factor, function(idx) { return idx / factor; }, function(x, y) {
+        var c = {
+          x: x,
+          y: y,
+          w: rot.w,
+          h: rot.h,
+          angle: rot.angle,
+          depositType: depositType
+        };
+        return canPlaceWithGap(c, null, gap) ? c : null;
+      });
+      if (candidate) {
+        state.boxes.push({
+          id: nextId(),
+          x: candidate.x,
+          y: candidate.y,
+          w: candidate.w,
+          h: candidate.h,
+          angle: candidate.angle,
+          depositType: depositType,
+          picktype: depositType
+        });
+        placedSomething = true;
+        break;
       }
     }
   }
@@ -485,6 +484,48 @@ function canPlace(r, ignore) {
   return true;
 }
 
+// Indici di griglia candidati: 0 e il primo indice dopo ogni bordo (±1 per l'arrotondamento in virgola mobile)
+function gridCandidates(edges, factor, maxIdx) {
+  var seen = { 0: true };
+  var list = [0];
+  for (var i = 0; i < edges.length; i++) {
+    var k = Math.ceil(edges[i] * factor);
+    for (var d = -1; d <= 1; d++) {
+      var idx = k + d;
+      if (idx < 0 || idx > maxIdx || seen[idx]) continue;
+      seen[idx] = true;
+      list.push(idx);
+    }
+  }
+  return list.sort(function(a, b) { return a - b; });
+}
+
+/**
+ * Prima posizione libera (y crescente, poi x crescente) sulla griglia del pallet.
+ * Stesso risultato della scansione millimetro per millimetro, ma prova solo le posizioni
+ * a ridosso dei bordi delle casse già piazzate: la prima posizione libera può essere
+ * solo a 0 o subito dopo il bordo (+gap) di un'altra cassa.
+ * @param {{w:number,h:number}} rot - dimensioni della cassa
+ * @param {number} gap - distanza minima tra casse
+ * @param {number} factor - 1 = millimetro, 10 = decimo di millimetro
+ * @param {function(number):number} toCoord - indice di griglia → coordinata (mm)
+ * @param {function(number,number):object|null} tryAt - ritorna la cassa candidata se libera
+ */
+function findFirstFit(rot, gap, factor, toCoord, tryAt) {
+  var maxYi = (state.pallet.h - rot.h) * factor;
+  var maxXi = (state.pallet.w - rot.w) * factor;
+  if (maxYi < 0 || maxXi < 0) return null;
+  var ys = gridCandidates(state.boxes.map(function(b) { return b.y + b.h + gap; }), factor, maxYi);
+  var xs = gridCandidates(state.boxes.map(function(b) { return b.x + b.w + gap; }), factor, maxXi);
+  for (var i = 0; i < ys.length; i++) {
+    for (var j = 0; j < xs.length; j++) {
+      var found = tryAt(toCoord(xs[j]), toCoord(ys[i]));
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function expandRect(r, gap) {
   return {
     x: r.x - gap / 2,
@@ -588,7 +629,7 @@ function dragBox(e) {
     y: normalizeCoord(mouseP.y - state.dragOffset.y),
     depositType: b.depositType
   };
-  if (canPlace(target, b.id)) { b.x = target.x; b.y = target.y; draw(); }
+  if (canPlace(target, b.id)) { b.x = target.x; b.y = target.y; requestDraw(); }
 }
 
 function endDrag(e) {
@@ -787,7 +828,7 @@ function moveSelected(dx, dy) {
   if (canPlace(target, b.id)) {
     b.x = target.x;
     b.y = target.y;
-    draw();
+    requestDraw();
   }
   else{
     var baseX = target.x;
@@ -811,7 +852,7 @@ function moveSelected(dx, dy) {
       if (canPlace(newTarget, b.id)) {
         b.x = newX;
         b.y = newY;
-        draw();
+        requestDraw();
         break;
       }
     }
@@ -852,6 +893,7 @@ bindHoldButton(document.getElementById("btnRight"),0.1,0);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+var lastSidebarHTML = null;
 function updateSidebar() {
   updateOffsetField();
   sideCompositionW.value = state.pallet.w;
@@ -868,7 +910,7 @@ function updateSidebar() {
     }
     html += "</ul>";
   }
-  SidebarContent.innerHTML = html;
+  if (html !== lastSidebarHTML) { SidebarContent.innerHTML = html; lastSidebarHTML = html; }
 }
 
 function updateOffsetField() {
@@ -879,7 +921,7 @@ function updateOffsetField() {
     var el = elements[i];
     var key = el.getAttribute("data-key");
     if (!strings[key]) continue;
-    el.textContent = strings[key];
+    if (el.textContent !== strings[key]) el.textContent = strings[key];
   }
 }
 
@@ -1039,7 +1081,7 @@ DepositB.onclick         = function() { placeNextBox("B"); };
 DepositAB.onclick        = function() { placeNextBox("AB"); };
 DeleteDeposit.onclick    = function() { deleteSelectedBox(); };
 autoFillBtn.onclick      = function() { autoFill();  };
-TreD.onclick             = function() { state.Init = false; localStorage.setItem("state", JSON.stringify(state)); window.location.href = "3D.html";  };
+TreD.onclick             = function() { state.Init = false; sessionStorage.setItem("state", JSON.stringify(state)); window.location.href = "3D.html";  };
 clearPalletBtn.onclick   = function() { clearPallet(); };
 CentreBoxs.onclick       = function() { snapBoxesToCorner("centre"); };
 snapTopLeft.onclick      = function() { snapBoxesToCorner("top-left"); };
@@ -1048,6 +1090,28 @@ snapBottomLeft.onclick   = function() { snapBoxesToCorner("bottom-left"); };
 snapBottomRight.onclick  = function() { snapBoxesToCorner("bottom-right"); };
 toggleSidebarBtn.onclick = function() { SidebarVisible = !SidebarVisible; if (SidebarVisible) { Sidebar.classList.add("open"); }  else { Sidebar.classList.remove("open"); } updateToggleSidebarButton(); };
 
+
+// Allinea campi, bottoni deposito e titolo allo stato corrente (dati PLC o stato ripristinato dalla vista 3D)
+function applyStateToUI() {
+  sidePalletW.value      = state.palletReal.w;
+  sidePalletH.value      = state.palletReal.h;
+  sideCompositionW.value = state.pallet.w;
+  sideCompositionH.value = state.pallet.h;
+  sideBoxW.value         = state.boxSize.w
+  sideBoxH.value         = state.boxSize.h
+  prevBox.w              = state.boxSize.w
+  prevBox.h              = state.boxSize.h
+  ApproachX.value        = state.Approach.x;
+  ApproachY.value        = state.Approach.y;
+
+  var  isADisabled  = !(state.PickType !== 2);
+  var  isBDisabled  = !(state.PickType == 1 || state.PickType == 3);
+  var  isABDisabled = !(state.PickType > 0);
+  updateDepositButtons(isADisabled, isBDisabled, isABDisabled);
+
+  var header = document.getElementById("pageTitle");
+  header.textContent = state.LayerType === "LayerA" ? "PalComposeTOOL – Configuration Layer A" : "PalComposeTOOL – Configuration Layer B";
+}
 
 function updatePalletFromPLC(pallet) {
   let FixedMaxComposition = 1500;
@@ -1079,24 +1143,7 @@ function updatePalletFromPLC(pallet) {
   state.pallet.w     = Math.min(state.palletReal.w,FixedMaxComposition);
   state.pallet.h     = Math.min(state.palletReal.h,FixedMaxComposition);
 
-  sidePalletW.value      = state.palletReal.w;
-  sidePalletH.value      = state.palletReal.h;
-  sideCompositionW.value = state.pallet.w;
-  sideCompositionH.value = state.pallet.h;
-  sideBoxW.value         = state.boxSize.w
-  sideBoxH.value         = state.boxSize.h
-  prevBox.w              = state.boxSize.w
-  prevBox.h              = state.boxSize.h
-  ApproachX.value        = state.Approach.x;
-  ApproachY.value        = state.Approach.y;
-
-  var  isADisabled  = !(state.PickType !== 2);
-  var  isBDisabled  = !(state.PickType == 1 || state.PickType == 3);
-  var  isABDisabled = !(state.PickType > 0);
-  updateDepositButtons(isADisabled, isBDisabled, isABDisabled);
-
-  var header = document.getElementById("pageTitle");
-  header.textContent = state.LayerType === "LayerA" ? "PalComposeTOOL – Configuration Layer A" : "PalComposeTOOL – Configuration Layer B";
+  applyStateToUI();
 
   state.boxes = [];
   state.selectedId = null;
@@ -1251,6 +1298,8 @@ function updatePalletFromPLC(pallet) {
   }
 }
 
+var MAX_BOXES_PLC = 60; // posizioni disponibili per layer nel PLC (vedi CreateLayerStructure nel VBA)
+
 SaveBtn.onclick          = function() {
   let symmetryValuesResult = calculateMirrorScores(state.boxes);
   showSavePopup({
@@ -1268,6 +1317,15 @@ SaveBtn.onclick          = function() {
         text: buttonTextPopup[3],
         class: "primary",
         onClick: function() {
+          if (state.boxes.length > MAX_BOXES_PLC) {
+            showHMIPopup({
+              title: titlePopup[0],
+              message: "The PLC accepts at most " + MAX_BOXES_PLC + " deposits per layer (" + state.boxes.length + " placed)",
+              headerColor: "#4d4d4d",
+              buttons: [ { text: buttonTextPopup[0], class: "confirm-btn", onClick: function () {} } ]
+            });
+            return;
+          }
           var checkboxes = document.querySelectorAll(".hm-checkbox input");
           var states = [];
           for (var i = 0; i < checkboxes.length; i++) {
@@ -1317,12 +1375,12 @@ SaveBtn.onclick          = function() {
             "CommonVariable": {
               "NBoxA": state.boxes.length,
               "NBoxB": state.boxes.length,
-              "PalletX": (state.palletReal.w * 10),
-              "PalletY": (state.palletReal.h * 10),
-              "OffsetDepositX": (state.Offset.x * 10),
-              "OffsetDepositY": (state.Offset.y * 10),
-              "CaseX": (sideBoxW.value * 10),
-              "CaseY": (sideBoxH.value * 10),
+              "PalletX": Math.round(state.palletReal.w * 10),
+              "PalletY": Math.round(state.palletReal.h * 10),
+              "OffsetDepositX": Math.round(state.Offset.x * 10),
+              "OffsetDepositY": Math.round(state.Offset.y * 10),
+              "CaseX": Math.round(sideBoxW.value * 10),
+              "CaseY": Math.round(sideBoxH.value * 10),
               "ApproachX": Math.round(approachXmm * 10),
               "ApproachY": Math.round(approachYmm * 10),
             },
@@ -2467,11 +2525,6 @@ function getCombinedFootprint(positionR, RifA, layerComplete, i) {
     const overlapX = !(bRight <= aLeft || aRight <= bLeft);
     const overlapY = !(bTop <= aBottom || aTop <= bBottom);
     const isColliding = overlapX && overlapY;
-    if (isColliding) {
-      console.log("COLLISION");
-      console.log("Comb:", a);
-      console.log("Oth:", b);
-    }
     return isColliding;
   }
 
@@ -2483,7 +2536,6 @@ function pairHasCollision(boxPrev, boxCurr, LayerComplete, i) {
   let h = boxCurr.h;
   if (!SameAngle) [w, h] = [h, w];
   let combined = getCombinedFootprint(boxPrev.angle, RifA, LayerComplete, i);
-  console.log(LayerComplete)
   for (let k = 0; k < LayerComplete.length; k++) {
     if (k === i || k === i - 1) continue;
     if (collide(combined, LayerComplete[k])) { return true; }

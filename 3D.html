@@ -27,7 +27,7 @@
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
   import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-  let state = JSON.parse(localStorage.getItem("state"));
+  let state = JSON.parse(sessionStorage.getItem("state"));
 
   function setupButtonWithSVG3D(button, svgNormal, svgPressed) {
     if (typeof svgNormal === 'string') svgNormal = document.getElementById(svgNormal);
@@ -95,7 +95,6 @@ objLoader.load('./Assets/3D/Rmk3.obj', function(robot) {
     robot.traverse(child => {
         if (child.isMesh) {
             child.material = new THREE.MeshStandardMaterial({ color: 0xE6C200 });
-                    console.log(child.name, child.parent.name);
         }
     });
 
@@ -124,7 +123,7 @@ objLoader.load('./Assets/3D/Rmk3.obj', function(robot) {
             rightGrip.rotation.y = -Math.sin(Date.now()*0.003) * 0.5;
         }
 
-        renderer.render(scene, camera); // solo se non hai già un animate globale
+        // il rendering è già fatto dal ciclo animate() globale: qui si aggiornano solo i giunti
     }
 
     animateRobotJoints();
