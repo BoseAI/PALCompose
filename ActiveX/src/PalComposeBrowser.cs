@@ -396,6 +396,16 @@ namespace PalCompose
                 var ver = t.Assembly.GetName().Version;
                 using (var v = k.CreateSubKey("Version")) v.SetValue("", ver.Major + "." + ver.Minor);
                 k.CreateSubKey(@"Implemented Categories\{40FC6ED4-2438-11CF-A3DB-080036F12502}").Close();
+
+                // RegAsm scrive InprocServer32 = "mscoree.dll" senza percorso. FactoryTalk View verifica che il file
+                // del controllo esista e, non trovandolo, cerca un "mscoreedll.CAB" sul server HMI
+                // ("CAB file missing on the server"). Con il percorso completo il controllo risulta installato.
+                // Environment.SystemDirectory: System32 per RegAsm 64 bit; per RegAsm 32 bit Windows lo
+                // reindirizza su SysWOW64, dove si trova la mscoree.dll a 32 bit.
+                using (var ip = k.OpenSubKey("InprocServer32", true))
+                {
+                    if (ip != null) ip.SetValue("", Path.Combine(Environment.SystemDirectory, "mscoree.dll"));
+                }
             }
         }
 

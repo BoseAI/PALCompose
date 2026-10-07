@@ -71,6 +71,8 @@ I dati del browser (cache, `sessionStorage`) stanno in `%LOCALAPPDATA%\PalCompos
 
 ## Se qualcosa non va
 
+- **"CAB file missing on the server … mscoreedll.CAB"** nella Diagnostics List: il controllo era registrato senza il percorso completo di `mscoree.dll`. Dalla versione attuale `install.bat` lo registra con il percorso completo. Rilancia `install.bat` (con FactoryTalk chiuso), poi in Studio elimina e reinserisci il controllo nel display. `verifica.bat` mostra la registrazione: la riga `(Default)` deve contenere `C:\Windows\...\mscoree.dll`.
+
 - **Il controllo non compare nell'elenco ActiveX:** rilanciare `install.bat` e controllare che non ci siano righe "ERRORE".
 - **Area bianca, nessuna pagina:** cercare "browser:" nella Diagnostics List (evento `BrowserError`), oppure chiamare `PalBrowser1.ShowDevTools` da un pulsante.
 - **"Microsoft Edge WebView2 Runtime non installato":** installare l'Evergreen Standalone Installer di Microsoft.
