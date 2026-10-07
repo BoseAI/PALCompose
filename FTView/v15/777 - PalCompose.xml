@@ -79,13 +79,10 @@ Private Const FILE_PATH_JS As String = "C:\Users\IMA-1\Documents\IMA\PalCompose\
 Private Const FILE_PATH_CSV As String = "C:\Users\IMA-1\Downloads\RuntimeData.csv"
 Private Const BROWSER_URL As String = "file:///C:/Users/IMA-1/Documents/IMA/PalCompose/Index.html"
 Private Const CSV_POLL_MS As Long = 500                       ' ogni quanto controllare se la pagina ha salvato
-' True  = tutti i tag di un layer scritti con una sola richiesta (PendingValue + WritePendingValues)
-' False = un tag alla volta, come nella versione precedente
-Private Const USE_BATCH_WRITE As Boolean = True
 
 Private Const ROUTINE_NAME As String = "PALCOMPOSE"
 ' Etichetta ad angolo (1) o laterale (0): solo lettura, passato alla pagina per la visualizzazione
-Private Const TAG_CORNER_LABELLING As String = "/FTDS_Area::[clogix]SizeWork.Outfeed.CornerLabelling"
+Private Const TAG_CORNER_LABELLING As String = "[clogix]SizeWork.Outfeed.CornerLabelling"
 
 
 Function CreateLayerStructure(LayerType As String) As Object
@@ -122,32 +119,32 @@ Function CreateLayerStructure(LayerType As String) As Object
     End Select
 
     LayerComposition("LayerType") = LayerType
-    LayerComposition("NBoxA") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R110": TG_Layer.Add LayerComposition("NBoxA")
-    LayerComposition("NBoxB") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R111": TG_Layer.Add LayerComposition("NBoxB")
-    LayerComposition("PalletX") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R107": TG_Layer.Add LayerComposition("PalletX")
-    LayerComposition("PalletY") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R108": TG_Layer.Add LayerComposition("PalletY")
-    LayerComposition("NBoxX") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.NumberBoxIn_X": TG_Layer.Add LayerComposition("NBoxX")
-    LayerComposition("NBoxY") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.NumberBoxIn_Y": TG_Layer.Add LayerComposition("NBoxY")
-    LayerComposition("OffsetDepositX") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R100": TG_Layer.Add LayerComposition("OffsetDepositX")
-    LayerComposition("OffsetDepositY") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R101": TG_Layer.Add LayerComposition("OffsetDepositY")
-    LayerComposition("PickType") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R106": TG_Layer.Add LayerComposition("PickType")
-    LayerComposition("CaseX") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R124": TG_Layer.Add LayerComposition("CaseX")
-    LayerComposition("CaseY") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R125": TG_Layer.Add LayerComposition("CaseY")
-    LayerComposition("PickingWheel") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R123": TG_Layer.Add LayerComposition("PickingWheel")
-    LayerComposition("NBoxCHA") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R134": TG_Layer.Add LayerComposition("NBoxCHA")
-    LayerComposition("NBoxCHB") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R135": TG_Layer.Add LayerComposition("NBoxCHB")
-    LayerComposition("ApproachX") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R103": TG_Layer.Add LayerComposition("ApproachX")
-    LayerComposition("ApproachY") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.Generals.R104": TG_Layer.Add LayerComposition("ApproachY")
+    LayerComposition("NBoxA") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R110": TG_Layer.Add LayerComposition("NBoxA")
+    LayerComposition("NBoxB") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R111": TG_Layer.Add LayerComposition("NBoxB")
+    LayerComposition("PalletX") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R107": TG_Layer.Add LayerComposition("PalletX")
+    LayerComposition("PalletY") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R108": TG_Layer.Add LayerComposition("PalletY")
+    LayerComposition("NBoxX") = "[clogix]PAL_SizeDisplayed.NumberBoxIn_X": TG_Layer.Add LayerComposition("NBoxX")
+    LayerComposition("NBoxY") = "[clogix]PAL_SizeDisplayed.NumberBoxIn_Y": TG_Layer.Add LayerComposition("NBoxY")
+    LayerComposition("OffsetDepositX") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R100": TG_Layer.Add LayerComposition("OffsetDepositX")
+    LayerComposition("OffsetDepositY") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R101": TG_Layer.Add LayerComposition("OffsetDepositY")
+    LayerComposition("PickType") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R106": TG_Layer.Add LayerComposition("PickType")
+    LayerComposition("CaseX") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R124": TG_Layer.Add LayerComposition("CaseX")
+    LayerComposition("CaseY") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R125": TG_Layer.Add LayerComposition("CaseY")
+    LayerComposition("PickingWheel") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R123": TG_Layer.Add LayerComposition("PickingWheel")
+    LayerComposition("NBoxCHA") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R134": TG_Layer.Add LayerComposition("NBoxCHA")
+    LayerComposition("NBoxCHB") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R135": TG_Layer.Add LayerComposition("NBoxCHB")
+    LayerComposition("ApproachX") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R103": TG_Layer.Add LayerComposition("ApproachX")
+    LayerComposition("ApproachY") = "[clogix]PAL_SizeDisplayed.Palletizer.Generals.R104": TG_Layer.Add LayerComposition("ApproachY")
     LayerComposition("CornerLabelling") = TAG_CORNER_LABELLING: TG_Layer.Add LayerComposition("CornerLabelling")
 
     For i = 1 To MAX_BOXES
         Set box = CreateObject("Scripting.Dictionary")
         box("id") = i
-        box("PositionX") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer." & LayerType & ".X" & LayerType & "Pos" & i
-        box("PositionY") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer." & LayerType & ".Y" & LayerType & "Pos" & i
-        box("PositionR") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer." & LayerType & ".W" & LayerType & "Pos" & i
-        box("PickType") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.PickUpType_x_Deposit" & LayerType & ".R" & (baseRegisterPick + i - 1)
-        box("DepositType") = "/FTDS_Area::[clogix]PAL_SizeDisplayed.Palletizer.DepositType" & LayerType & ".R" & (baseRegisterDep + i - 1)
+        box("PositionX") = "[clogix]PAL_SizeDisplayed.Palletizer." & LayerType & ".X" & LayerType & "Pos" & i
+        box("PositionY") = "[clogix]PAL_SizeDisplayed.Palletizer." & LayerType & ".Y" & LayerType & "Pos" & i
+        box("PositionR") = "[clogix]PAL_SizeDisplayed.Palletizer." & LayerType & ".W" & LayerType & "Pos" & i
+        box("PickType") = "[clogix]PAL_SizeDisplayed.Palletizer.PickUpType_x_Deposit" & LayerType & ".R" & (baseRegisterPick + i - 1)
+        box("DepositType") = "[clogix]PAL_SizeDisplayed.Palletizer.DepositType" & LayerType & ".R" & (baseRegisterDep + i - 1)
         TG_Layer.Add box("PositionX")
         TG_Layer.Add box("PositionY")
         TG_Layer.Add box("PositionR")
@@ -298,32 +295,9 @@ Function BuildPalletValues(ByVal layerStructure As Object, LayerType As String) 
 End Function
 
 
-' Imposta il valore di un tag: in coda (scrittura unica a fine lettura CSV) o subito.
+' Scrive il valore di un tag (FactoryTalk View 13 non ha la scrittura a blocchi PendingValue/WritePendingValues)
 Private Sub SetTagValue(tg As TagGroup, ByVal tagPath As String, ByVal v As Variant)
-    If USE_BATCH_WRITE Then
-        tg.Item(tagPath).PendingValue = v
-    Else
-        tg.Item(tagPath).value = v
-    End If
-End Sub
-
-
-' Scrive in un'unica richiesta tutti i valori in coda del gruppo.
-Private Sub WritePending(tg As TagGroup, ByVal groupName As String)
-    Dim slTagsInError As StringList
-    Dim bRetVal As Boolean
-    Dim sErrorMsg As String
-    Dim i As Long
-
-    bRetVal = tg.WritePendingValues(slTagsInError)
-    If Not slTagsInError Is Nothing Then
-        For i = 1 To slTagsInError.Count
-            sErrorMsg = sErrorMsg & IIf(i > 1, ", ", "") & slTagsInError.Item(i)
-        Next i
-    End If
-    If (Not bRetVal) Or sErrorMsg <> "" Then
-        Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - scrittura " & groupName & " non riuscita: " & sErrorMsg, ftDiagSeverityError
-    End If
+    tg.Item(tagPath).value = v
 End Sub
 
 
@@ -498,10 +472,6 @@ Private Sub Display_AnimationStart()
             End If
         Loop
 
-        If USE_BATCH_WRITE Then
-            WritePending tgA, "LayerA"
-            WritePending tgB, "LayerB"
-        End If
 
         Application.LogDiagnosticsMessage "File valido: Saved = TRUE"
     Else

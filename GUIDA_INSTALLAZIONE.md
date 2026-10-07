@@ -84,8 +84,7 @@ Il file `FTView\v13\777 - PalCompose.xml` (per FactoryTalk View SE 13; per la v1
    - [ ] **Esci senza salvare** → torna al display del layer, nel PLC non cambia nulla;
    - [ ] **Salva ed esci** → torna al display del layer e i valori nel PLC sono quelli nuovi.
 3. Apri la **Diagnostics List** e cerca le righe `PALCOMPOSE`:
-   - "File valido: Saved = TRUE/FALSE" vuol dire che è andato tutto bene;
-   - "scrittura LayerA non riuscita" indica che la scrittura a blocchi non è supportata. In ThisDisplay imposta `USE_BATCH_WRITE = False`, salva e riprova.
+   - "File valido: Saved = TRUE/FALSE" vuol dire che è andato tutto bene.
 4. Controlla in Gestione attività che, mentre la pagina è aperta, la CPU **non** stia fissa al 25–100%.
 
 Se qualcosa non va: rimetti il codice VBA del backup e i file del backup. Si torna esattamente a prima.

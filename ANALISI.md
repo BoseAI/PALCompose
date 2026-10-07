@@ -39,7 +39,7 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
 | 2 | Il CSV di una sessione precedente non viene cancellato prima di aprire la pagina | Il VBA lo legge subito e scrive nel PLC dati vecchi; il browser salva il nuovo come `RuntimeData (1).csv`, che non viene mai letto | Cancellazione del CSV prima della navigazione |
 | 3 | `CStr` in `ToJSON` usa le impostazioni internazionali | Con un tag REAL `12.5` diventa `12,5` → JSON non valido → pagina vuota | `NumToText` (sempre il punto) |
 | 4 | `CDbl` nella lettura del CSV | In italiano `CDbl("12.5")` = **125** | `TextToNum` (`Val`, sempre il punto) |
-| 5 | Scrittura di ~600 tag uno alla volta | Salvataggio lento | `PendingValue` + `WritePendingValues`: una richiesta per layer (`USE_BATCH_WRITE`) |
+| 5 | Scrittura di ~600 tag uno alla volta | Salvataggio lento | Tentata la scrittura a blocchi (`PendingValue`/`WritePendingValues`): **non esiste in FactoryTalk View 13**, rimossa. Resta la scrittura tag per tag |
 | 6 | Lettura PLC fallita → la pagina si apriva comunque con il file del giro precedente | Rischio di salvare nel PLC una composizione di un altro formato | Si torna al display del layer senza aprire l'editor, errore nel diagnostico |
 | 7 | `oElement.Name` non definito | Errore runtime se il display `000 - VBA_code` non è caricato | Nome del display come costante |
 | 8 | `Set tagItem` non azzerato prima di `On Error Resume Next` | Un tag mancante non veniva mai segnalato | `Set tagItem = Nothing` |
@@ -49,7 +49,6 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
 
 **Da verificare in impianto:**
 
-- **`WritePendingValues`.** Fa parte del modello a oggetti TagGroup di FT View SE, ma va provato sulla vostra versione. Se dà problemi, impostate `USE_BATCH_WRITE = False` e si torna alla scrittura tag per tag, con tutte le altre correzioni attive.
 - **`PickType` per cassa.** Con questo dato, ora la pagina evidenzia in rosso le collisioni delle coppie A+B (PickType 3), come previsto dal codice originale.
 
 ## Problemi trovati e non ancora risolti
