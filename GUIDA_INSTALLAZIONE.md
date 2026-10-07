@@ -59,6 +59,9 @@ Il file `FTView\v13\777 - PalCompose.xml` (per FactoryTalk View SE 13; per la v1
 5. Quando chiede cosa fare con il display esistente, scegli di **sostituirlo** (Replace / overwrite).
 6. Apri il display 777 → **Alt+F11** → controlla le costanti in cima a ThisDisplay (vedi punto 4 di 3B) → **Debug → Compile** → salva.
 
+
+> **Aggiornamenti futuri:** a ogni modifica del VBA il file `FTView\v13\777 - PalCompose.xml` viene rigenerato (`tools/build_ftview_xml.py`). Per aggiornare basta riscaricare lo ZIP, reimportare il display (3A) e copiare i file della pagina eventualmente cambiati (Passo 2).
+
 ### 3B. Incollare il codice a mano
 
 1. FactoryTalk View Studio → apri il display **777 - PalCompose** → **Alt+F11**.
