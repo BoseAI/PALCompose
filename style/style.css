@@ -54,6 +54,11 @@ body {
   gap: 0px;
   overflow-y: auto;
   max-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 8px 8px 8px;
+  background: #eef1f4;
+  border-left: 1px solid #d5dbe1;
 }
 
 /* =========================================================
@@ -87,7 +92,9 @@ canvas {
 label {
   display: block;
   margin-top: 0px;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4d5862;
 }
 
 input[type="range"],
@@ -175,17 +182,27 @@ button:active {
 /* =========================================================
    FIELDSET & LEGEND
    ========================================================= */
+/* Ogni gruppo di comandi e' una scheda bianca con il titolo sul bordo */
 fieldset {
-  margin-top: 12px;
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #fdfdfd;
+  margin-top: 10px;
+  padding: 8px 10px 10px 10px;
+  border: 1px solid #d5dbe1;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(2, 48, 71, 0.10);
 }
 
 legend {
-  padding: 0 0px;
-  font-weight: 600;
+  padding: 2px 10px 2px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #023047;
+  background: #ffffff;
+  border: 1px solid #d5dbe1;
+  border-left: 4px solid #09CCB5;
+  border-radius: 6px;
 }
 
 /* =========================================================
@@ -233,17 +250,98 @@ legend {
    SIDEBAR
    ========================================================= */
 #Sidebar {
-  position: fixed;           
-  top: 0;                  
-  Left: -27%;            
-  width: 25%;              
-  height: 100%;             
-  background: #f4f4f4;      
-  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.9); 
-  overflow: auto;            
-  padding: 4px;           
-  transition: right 0.3s;    
-  z-index: 999;              
+  position: fixed;
+  top: 0;
+  left: -27%;
+  width: 25%;
+  height: 100%;
+  box-sizing: border-box;
+  background: #eef1f4;
+  border-right: 1px solid #d5dbe1;
+  box-shadow: 4px 0 14px rgba(2, 48, 71, 0.35);
+  overflow: auto;
+  padding: 4px 10px 10px 10px;
+  transition: left 0.3s;
+  z-index: 999;
+}
+
+#Sidebar hr {
+  border: none;
+  border-top: 1px solid #d5dbe1;
+  margin: 10px 0 !important;
+}
+
+/* Offset deposito: righe informative */
+#Sidebar h4 {
+  margin: 4px 0 !important;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #023047;
+  background: #ffffff;
+  border: 1px solid #d5dbe1;
+  border-radius: 8px;
+}
+
+#Sidebar h4[data-key="placedCasesTitle"] {
+  background: none;
+  border: none;
+  padding: 2px 2px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+/* Lista casse piazzate */
+#SidebarContent ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#SidebarContent li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  margin-bottom: 4px;
+  background: #ffffff;
+  border: 1px solid #e1e6ea;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #333;
+}
+
+#SidebarContent .caseId {
+  min-width: 26px;
+  font-weight: 700;
+  color: #023047;
+}
+
+#SidebarContent .caseType {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #023047;
+  background: #ffb703;
+}
+
+#SidebarContent .caseType.B { background: #8ecae6; }
+#SidebarContent .caseType.AB { background: #7fdccf; }
+
+#SidebarContent .caseData {
+  margin-left: auto;
+  color: #023047;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#SidebarContent p {
+  margin: 4px 2px;
+  color: #6b7680;
+  font-style: italic;
 }
 
 #Sidebar.open {
@@ -404,16 +502,27 @@ legend {
 /* Stile solo per i campi numerici */
 input[type="number"] {
   background: #FFFFFF;
-  border: 1px solid #E3E3E3;
-  border-radius: 3px;
-  padding: 4px 6px;
+  border: 1px solid #c9d2da;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-top: 2px;
   width: 100%;        /* occupa tutto lo spazio del label */
   box-sizing: border-box; /* evita overflow */
+  font-size: 16px;
+  color: #023047;
 }
 
 /* Facoltativo: focus highlight */
+/* niente frecce su/giu': su touch screen non servono e tolgono spazio al valore */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 input[type="number"]:focus {
   border-color: #09CCB5;
+  box-shadow: 0 0 0 2px rgba(9, 204, 181, 0.25);
   outline: none;
 }
 

@@ -18,7 +18,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Win32;
 
 [assembly: ComVisible(false)]
@@ -97,6 +96,11 @@ namespace PalCompose
         [DispId(24)] void Reload();
         /// <summary>Apre gli strumenti di sviluppo (F12) per la diagnosi</summary>
         [DispId(25)] void ShowDevTools();
+
+        /// <summary>Zoom della pagina (1 = 100%)</summary>
+        [DispId(8)] double Zoom { get; set; }
+        /// <summary>Scala di disegno: 1 = un pixel CSS per pixel del controllo, ignorando lo zoom DPI di Windows (default)</summary>
+        [DispId(9)] double RenderScale { get; set; }
     }
 
     /// <summary>Eventi ricevuti dal VBA (Private Sub NomeControllo_MessageReceived(...)).</summary>
@@ -131,8 +135,10 @@ namespace PalCompose
         public event NavigationCompletedHandler NavigationCompleted;
         public event BrowserErrorHandler BrowserError;
 
-        private readonly WebView2 _web;
+        private CoreWebView2Controller _controller;
         private CoreWebView2 _core;
+        private double _zoom = 1.0;
+        private double _renderScale = 1.0;
         private bool _initStarted;
         private string _appFolder = "";
         private string _startPage = "Index.html";
@@ -146,8 +152,6 @@ namespace PalCompose
 
         public PalComposeBrowser()
         {
-            _web = new WebView2 { Dock = DockStyle.Fill };
-            Controls.Add(_web);
             BackColor = System.Drawing.Color.White;
         }
 
@@ -194,6 +198,18 @@ namespace PalCompose
         public string LastError { get { return _lastError; } }
 
         public bool AllowExternalNavigation { get; set; }
+
+        public double Zoom
+        {
+            get { return _zoom; }
+            set { _zoom = value > 0 ? value : 1.0; OnUi(() => { if (_controller != null) _controller.ZoomFactor = _zoom; }); }
+        }
+
+        public double RenderScale
+        {
+            get { return _renderScale; }
+            set { _renderScale = value > 0 ? value : 1.0; OnUi(() => { if (_controller != null) _controller.RasterizationScale = _renderScale; }); }
+        }
 
         // ---------------------------------------------------------------- metodi
         public void LoadApp(string appFolder, string startPage)
@@ -290,8 +306,17 @@ namespace PalCompose
                 Directory.CreateDirectory(userData);
                 DependencyLoader.SetWebView2LoaderPath();
                 var env = await CoreWebView2Environment.CreateAsync(null, userData);
-                await _web.EnsureCoreWebView2Async(env);
-                _core = _web.CoreWebView2;
+
+                // Browser ospitato direttamente nella finestra del controllo: si puo' fissare la scala.
+                // FactoryTalk disegna il display senza tenere conto dello zoom DPI di Windows; se WebView2
+                // lo applicasse la pagina risulterebbe ingrandita e tagliata.
+                _controller = await env.CreateCoreWebView2ControllerAsync(Handle);
+                _controller.ShouldDetectMonitorScaleChanges = false;
+                _controller.RasterizationScale = _renderScale;
+                _controller.ZoomFactor = _zoom;
+                _controller.Bounds = ClientRectangle;
+                _controller.IsVisible = Visible;
+                _core = _controller.CoreWebView2;
 
                 var s = _core.Settings;
                 s.AreDefaultContextMenusEnabled = false;
@@ -437,9 +462,28 @@ namespace PalCompose
             return sb.Append('"').ToString();
         }
 
+        // ---------------------------------------------------------------- dimensioni, visibilita', focus
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            if (_controller != null) _controller.Bounds = ClientRectangle;
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (_controller != null) _controller.IsVisible = Visible;
+        }
+
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            if (_controller != null) _controller.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+        }
+
         protected override void Dispose(bool disposing)
         {
-            if (disposing) _web.Dispose();
+            if (disposing && _controller != null) { _controller.Close(); _controller = null; _core = null; }
             base.Dispose(disposing);
         }
 

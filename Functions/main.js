@@ -1015,7 +1015,8 @@ function updateSidebar() {
       var b = state.boxes[i];
       var centerX = Math.ceil(b.x + b.w / 2);
       var centerY = Math.ceil(b.y + b.h / 2);
-      html += "<li>ID: " + b.id + " X:" + centerX + "mm, Y:" + centerY + ",mm " + strings.angle + ":" + b.angle + "°, " + strings.type + ":" + b.depositType + " </li>";
+      html += "<li><span class=\"caseId\">" + b.id + "</span><span class=\"caseType " + b.depositType + "\">" + b.depositType + "</span>" +
+              "<span class=\"caseData\">X " + centerX + " · Y " + centerY + " · " + b.angle + "°</span></li>";
     }
     html += "</ul>";
   }
@@ -1029,7 +1030,7 @@ function updateOffsetField() {
   for (var i = 0; i < elements.length; i++) {
     var el = elements[i];
     var key = el.getAttribute("data-key");
-    if (!strings[key]) continue;
+    if (!strings[key] || el.id === "SidebarContent") continue; // la lista casse la scrive updateSidebar
     if (el.textContent !== strings[key]) el.textContent = strings[key];
   }
 }

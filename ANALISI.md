@@ -13,7 +13,7 @@ PLC ◄──(tag uno per uno)── VBA legge ◄── Downloads\RuntimeData.c
 
 ## Interventi fatti
 
-### JavaScript (`Functions/main.js`, `index.html`, `3D.html`, `robot.html`)
+### JavaScript (`Functions/main.js`, `index.html`, `3D.html`)
 
 | # | Problema | Effetto | Correzione |
 |---|----------|---------|------------|
@@ -59,15 +59,15 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
    - Ogni deposito è diviso nelle casse reali (NBoxX × NBoxY), disegnate con una sola chiamata di disegno.
    - La scena si ridisegna solo quando si muove la vista.
    - Il robot è facoltativo: `tools/embed-models.bat` incorpora i `.obj`/`.glb` di `Assets/3D` in `Assets/3D/models.js`.
-   - `VBA.vb` (server Python) non serve più.
-2. **`robot.html` carica GSAP da internet** (`cdn.jsdelivr.net`). Su una rete di impianto senza internet non funziona: va copiato in `libs/`.
+   - `VBA.vb` (server Python) eliminato: non serve più.
+2. **`robot.html`** (pagina di prova che caricava GSAP da internet): eliminata.
 3. **Percorsi fissi `C:\Users\IMA-1\...`.** Ora sono costanti in cima al codice VBA, ma su un altro PC vanno cambiati a mano.
 4. **Attesa del CSV nell'evento `AnimationStart`.** Se il display viene chiuso senza premere Salva/Esci, il ciclo continua ad aspettare (ora senza consumare CPU).
 5. **File mancanti o fuori posto nel repository.**
    - Icone: RISOLTO, spostate in `Assets/Icon/` e corretti i nomi `_notpressed` → `_Notpressed` in `index.html`.
    - Mancano `Assets/3D/*.glb`/`.obj` e `libs/three/examples/jsm/`.
-   - `libs/three/build` contiene 11 MB di build non usate: serve solo `three.module.js`.
-   - `style3D.css` è identico a `style.css`.
+   - `libs/three/build` (11 MB non usati), `PalCompose.svg` (non referenziato): eliminati.
+   - `style3D.css` (identico a `style.css`): eliminato, `3D.html` usa `style.css`.
 6. **`sideCompositionW/H.onchange` confronta stringa con numero** (`value !== prevPallet.w`), quindi il confronto è sempre vero. Effetto minimo: il popup compare anche se il valore non è cambiato.
 
 ## Alternative al passaggio via file
