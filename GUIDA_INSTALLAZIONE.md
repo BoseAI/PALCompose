@@ -33,7 +33,7 @@ Copia dalla cartella scaricata a `C:\IMA\Tools\PalCompose`, **sovrascrivendo**:
 |------------|------|
 | `index.html` | |
 | `3D.html` | |
-| `Functions\main.js` | |
+| `Functions\` | tutta la cartella (la logica ora è divisa in più file) |
 | `libs\three\three.bundle.js` | nuovo: serve alla vista 3D senza server |
 | `Assets\Icon\` | le icone (se le hai già uguali, puoi saltare) |
 | `tools\` | facoltativo: serve solo per il robot nel 3D |

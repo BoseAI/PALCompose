@@ -160,7 +160,18 @@
     </aside>      
   </div>  
 <script src="RuntimeLayerData.js"></script>
-<script src="./Functions/main.js"></script>
+<script src="./Functions/config.js"></script>
+<script src="./Functions/state.js"></script>
+<script src="./Functions/draw.js"></script>
+<script src="./Functions/placement.js"></script>
+<script src="./Functions/interaction.js"></script>
+<script src="./Functions/ui.js"></script>
+<script src="./Functions/plc.js"></script>
+<script src="./Functions/layer-tools.js"></script>
+<script src="./Functions/engineering.js"></script>
+<script src="./Functions/save.js"></script>
+<script src="./Functions/inputs.js"></script>
+<script src="./Functions/app.js"></script>
 <script>
 
   // Lo stato passa dalla vista 3D solo nella sessione corrente del browser: alla riapertura
@@ -173,6 +184,9 @@
   window.name = "";
   // Dati PLC: dall'ActiveX PalComposeBrowser (PalComposeHost) oppure dal file RuntimeLayerData.js scritto dal VBA
   var plcData = (window.PalComposeHost && window.PalComposeHost.data) || (typeof palletData !== "undefined" ? palletData : null);
+  setupEngineeringMode();
+  // Modalita' tecnico senza PLC: si parte dai dati di esempio di config.js
+  if (!plcData && ENGINEERING_MODE) plcData = JSON.parse(JSON.stringify(PALCOMPOSE_CONFIG.defaultPlcData));
   if (!stateOld || Object.keys(stateOld).length === 0) {
     if (plcData) { updatePalletFromPLC(plcData); }
     else { showHMIPopup({ title: titlePopup[2] + " 0", message: "No data received from the PLC", headerColor: "#EA053A", buttons: [] }); }
