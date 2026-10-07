@@ -19,6 +19,11 @@ function applyStateToUI() {
   var  isADisabled  = !(state.PickType !== 2);
   var  isBDisabled  = !(state.PickType == 1 || state.PickType == 3);
   var  isABDisabled = !(state.PickType > 0);
+  // deposito con una dimensione nulla (es. presa divisa con tutte le casse sul canale A): pulsante disattivato
+  function depOk(d) { return !!d && d.x >= 1 && d.y >= 1; }
+  if (!depOk(state.DepDimA))  isADisabled  = true;
+  if (!depOk(state.DepDimB))  isBDisabled  = true;
+  if (!depOk(state.DepDimAB)) isABDisabled = true;
   updateDepositButtons(isADisabled, isBDisabled, isABDisabled);
 
   var header = document.getElementById("pageTitle");
@@ -66,6 +71,7 @@ function updatePalletFromPLC(pallet) {
   let Error = 0;
 
   Error = updateDepositDimensions();
+  applyStateToUI(); // bottoni A/B/AB in base alle dimensioni appena calcolate
   if (Error > 0){
     StringErorr = "Ch.A Rows Number (" + state.NboxCH.a + ") Ch.B Rows Number (" + state.NboxCH.b + ") <> Cases Number";
     switch(Error){

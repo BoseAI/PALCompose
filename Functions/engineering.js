@@ -137,7 +137,17 @@ function showEngineeringPopup() {
       a.value = na;
       b.value = total - na;
     }
+    // presa divisa con una sola fila di casse sull'asse diviso: il canale B resterebbe vuoto
+    var bad = split && total < 2;
+    var axis = (pick === 1) !== el("PickingWheel").checked ? "X" : "Y";
+    warn.textContent = bad ? "\u26A0 " + el("PickType").options[el("PickType").selectedIndex].text +
+      " splits the deposit along " + axis + ": \"Cases per deposit " + axis + "\" must be at least 2 (one row on A, the others on B)." : "";
+    warn.style.display = bad ? "block" : "none";
+    overlay.querySelectorAll("[data-act=keep],[data-act=clear]").forEach(function (btn) { btn.disabled = bad; });
   }
+  var warn = document.createElement("div");
+  warn.className = "eng-warn";
+  overlay.querySelector(".eng-note").parentNode.insertBefore(warn, overlay.querySelector(".eng-note"));
   ["PickType", "NBoxX", "NBoxY", "NBoxCHA", "PickingWheel"].forEach(function (k) {
     el(k).addEventListener("input", refreshSplit);
     el(k).addEventListener("change", refreshSplit);
@@ -146,7 +156,7 @@ function showEngineeringPopup() {
 
   overlay.querySelector(".hm-popup-footer").onclick = function (e) {
     var act = e.target.closest("button") && e.target.closest("button").getAttribute("data-act");
-    if (!act) return;
+    if (!act || e.target.closest("button").disabled) return;
     document.body.removeChild(overlay);
     if (act === "cancel") return;
     var out = stateToPlcData();

@@ -750,6 +750,21 @@ input[type="number"]:focus {
   background: #eef1f4;
 }
 
+.eng-warn {
+  display: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #EA053A;
+  background: #fdecef;
+  border-top: 1px solid #f5b5c2;
+}
+
+.hm-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .eng-note {
   padding: 8px 16px;
   font-size: 13px;
