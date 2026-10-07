@@ -46,6 +46,20 @@ Non serve copiare `ANALISI.md`, `GUIDA_INSTALLAZIONE.md`, `ActiveX\`, `VBA\`, `7
 
 ## 3. Fase 1 – VBA del display 777
 
+Hai due modi: **3A importare il display** (consigliato) oppure **3B incollare il codice a mano**.
+
+### 3A. Importare il display già pronto
+Il file `FTView\777 - PalCompose.xml` è il tuo display 777 originale con dentro il VBA nuovo (ThisDisplay e Module1). Grafica e oggetti sono invariati. L'export originale è in `FTView\originale\`.
+
+1. In FactoryTalk View Studio chiudi il display 777, se è aperto.
+2. Menu **Tools → Graphics Import Export Wizard** (in alcune versioni: tasto destro su *Displays* → *Import and Export…*).
+3. Scegli **Import graphic information into displays** → *Next*.
+4. Seleziona il file `FTView\777 - PalCompose.xml` dalla cartella scaricata.
+5. Quando chiede cosa fare con il display esistente, scegli di **sostituirlo** (Replace / overwrite).
+6. Apri il display 777 → **Alt+F11** → controlla le costanti in cima a ThisDisplay (vedi punto 4 di 3B) → **Debug → Compile** → salva.
+
+### 3B. Incollare il codice a mano
+
 1. FactoryTalk View Studio → apri il display **777 - PalCompose** → **Alt+F11**.
 2. **Module1:**
    - nella finestra Progetto, tasto destro su `Module1` → *Remove Module1* → alla domanda "esportare?" rispondi **No** (il backup l'hai già fatto);
