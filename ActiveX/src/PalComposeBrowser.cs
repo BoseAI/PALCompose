@@ -139,6 +139,7 @@ namespace PalCompose
         private string _pageData = "";
         private string _pendingUrl;
         private string _hostScriptId;
+        private System.Threading.Tasks.Task _scriptTask = System.Threading.Tasks.Task.FromResult(0);
         private string _lastError = "";
         private bool _firstNavigationDone;
         private readonly System.Collections.Generic.List<string> _pendingMessages = new System.Collections.Generic.List<string>();
@@ -150,11 +151,28 @@ namespace PalCompose
             BackColor = System.Drawing.Color.White;
         }
 
+        // ---------------------------------------------------------------- thread
+        // In FactoryTalk il VBA chiama il controllo da un thread diverso da quello della finestra.
+        // Un controllo .NET riceve queste chiamate direttamente (senza il passaggio automatico di COM),
+        // mentre WebView2 accetta solo il thread che lo ha creato: ogni operazione sul browser
+        // viene quindi riportata sul thread della finestra.
+        private void OnUi(Action action)
+        {
+            if (IsHandleCreated && InvokeRequired) { BeginInvoke(action); return; }
+            action();
+        }
+
+        private T OnUiSync<T>(Func<T> func)
+        {
+            if (IsHandleCreated && InvokeRequired) return (T)Invoke(func);
+            return func();
+        }
+
         // ---------------------------------------------------------------- proprieta'
         public string AppFolder
         {
             get { return _appFolder; }
-            set { _appFolder = value ?? ""; ApplyFolderMapping(); }
+            set { _appFolder = value ?? ""; OnUi(ApplyFolderMapping); }
         }
 
         public string StartPage
@@ -166,10 +184,10 @@ namespace PalCompose
         public string PageData
         {
             get { return _pageData; }
-            set { _pageData = value ?? ""; UpdateHostScript(); }
+            set { _pageData = value ?? ""; OnUi(UpdateHostScript); }
         }
 
-        public string CurrentUrl { get { return _core != null ? _core.Source : (_pendingUrl ?? ""); } }
+        public string CurrentUrl { get { return OnUiSync(() => _core != null ? _core.Source : (_pendingUrl ?? "")); } }
 
         public bool IsReady { get { return _core != null; } }
 
@@ -187,37 +205,58 @@ namespace PalCompose
 
         public void Navigate(string url)
         {
+            OnUi(() => NavigateCore(url));
+        }
+
+        // La navigazione parte solo dopo che lo script con PageData e' registrato,
+        // altrimenti la pagina potrebbe caricarsi senza i dati
+        private async void NavigateCore(string url)
+        {
             if (_core == null) { _pendingUrl = url; EnsureInitialized(); return; }
-            try { _core.Navigate(url); }
+            EnsureUiContext();
+            try
+            {
+                await _scriptTask;
+                _core.Navigate(url);
+            }
             catch (Exception ex) { ReportError("Navigate: " + ex.Message); }
         }
 
         public void SendToPage(string message)
         {
-            // prima del primo caricamento la pagina non ha ancora il gestore: il messaggio va in coda
-            if (_core == null || !_firstNavigationDone) { _pendingMessages.Add(message ?? ""); EnsureInitialized(); return; }
-            try { _core.PostWebMessageAsString(message ?? ""); }
-            catch (Exception ex) { ReportError("SendToPage: " + ex.Message); }
+            OnUi(() =>
+            {
+                // prima del primo caricamento la pagina non ha ancora il gestore: il messaggio va in coda
+                if (_core == null || !_firstNavigationDone) { _pendingMessages.Add(message ?? ""); EnsureInitialized(); return; }
+                try { _core.PostWebMessageAsString(message ?? ""); }
+                catch (Exception ex) { ReportError("SendToPage: " + ex.Message); }
+            });
         }
 
-        public async void ExecuteScript(string script)
+        public void ExecuteScript(string script)
         {
-            if (_core == null) { ReportError("ExecuteScript: browser non pronto"); return; }
-            EnsureUiContext();
-            try { await _core.ExecuteScriptAsync(script ?? ""); }
-            catch (Exception ex) { ReportError("ExecuteScript: " + ex.Message); }
+            OnUi(async () =>
+            {
+                if (_core == null) { ReportError("ExecuteScript: browser non pronto"); return; }
+                EnsureUiContext();
+                try { await _core.ExecuteScriptAsync(script ?? ""); }
+                catch (Exception ex) { ReportError("ExecuteScript: " + ex.Message); }
+            });
         }
 
         public void Reload()
         {
-            if (_core != null) _core.Reload();
+            OnUi(() => { if (_core != null) _core.Reload(); });
         }
 
         public void ShowDevTools()
         {
-            if (_core == null) return;
-            _core.Settings.AreDevToolsEnabled = true;
-            _core.OpenDevToolsWindow();
+            OnUi(() =>
+            {
+                if (_core == null) return;
+                _core.Settings.AreDevToolsEnabled = true;
+                _core.OpenDevToolsWindow();
+            });
         }
 
         // ---------------------------------------------------------------- inizializzazione
@@ -275,6 +314,7 @@ namespace PalCompose
                 {
                     string url = _pendingUrl;
                     _pendingUrl = null;
+                    await _scriptTask;
                     _core.Navigate(url);
                 }
             }
@@ -304,10 +344,17 @@ namespace PalCompose
         }
 
         // Script eseguito in ogni pagina prima dei suoi script: espone i dati e il canale verso il VBA
-        private async void UpdateHostScript()
+        private void UpdateHostScript()
         {
             if (_core == null) return;
             EnsureUiContext();
+            var previous = _scriptTask;
+            _scriptTask = UpdateHostScriptAsync(previous);
+        }
+
+        private async System.Threading.Tasks.Task UpdateHostScriptAsync(System.Threading.Tasks.Task previous)
+        {
+            try { await previous; } catch { }
             try
             {
                 if (_hostScriptId != null) { _core.RemoveScriptToExecuteOnDocumentCreated(_hostScriptId); _hostScriptId = null; }
