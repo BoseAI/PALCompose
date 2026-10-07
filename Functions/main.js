@@ -36,6 +36,7 @@ var state = {
   Approach:{x:0,y:0},
   NBoxA:0,
   NBoxB:0,
+  CornerLabelling:false, // true = etichetta ad angolo (destra + alto con cassa a 0°), false = laterale (lato destro)
   Init:true,
 };
 var canvas = document.getElementById("c");
@@ -148,10 +149,50 @@ function getCaseGrid(box) {
   return best;
 }
 
+// Etichetta sulla cassa (mm): rettangolare, sul lato destro della cassa a 0° oppure piegata sull'angolo destra/alto
+var LABEL_SIDE_LEN = 150;   // etichetta laterale: lunghezza sul lato
+var LABEL_CORNER_LEN = 100; // etichetta ad angolo: lunghezza su ciascuno dei due lati
+var LABEL_THICK = 14;       // spessore con cui è disegnata nella vista dall'alto
+
+// Rotazione della singola cassa: quella del deposito, +90° se le casse sono girate rispetto al deposito (picking wheel)
+function getCaseAngle(box, grid) {
+  var a = Number(box.angle) || 0;
+  if (grid && grid.rotated !== (a % 180 === 90)) a = (a + 90) % 360;
+  return a;
+}
+
+// Disegna l'etichetta nel sistema della cassa già centrato e ruotato (lw x lh = dimensioni della cassa a 0°, px)
+function drawCaseLabel(lw, lh) {
+  var t = Math.max(3, mmToPx(LABEL_THICK));
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#023047";
+  ctx.lineWidth = 1.5;
+  if (state.CornerLabelling) {
+    var lc = Math.min(mmToPx(LABEL_CORNER_LEN), lw * 0.9, lh * 0.9);
+    ctx.beginPath(); // L sull'angolo destra/alto
+    ctx.moveTo(lw / 2, lh / 2);
+    ctx.lineTo(lw / 2, lh / 2 - lc);
+    ctx.lineTo(lw / 2 - t, lh / 2 - lc);
+    ctx.lineTo(lw / 2 - t, lh / 2 - t);
+    ctx.lineTo(lw / 2 - lc, lh / 2 - t);
+    ctx.lineTo(lw / 2 - lc, lh / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  else {
+    var ls = Math.min(mmToPx(LABEL_SIDE_LEN), lh * 0.85);
+    ctx.fillRect(lw / 2 - t, -ls / 2, t, ls);
+    ctx.strokeRect(lw / 2 - t, -ls / 2, t, ls);
+  }
+}
+
 // Casse con effetto cartone: luce dall'alto, bordo, nastro adesivo lungo il lato lungo
 function drawCaseGrid(box, w, h) {
   var g = getCaseGrid(box);
   var nx = g ? g.nx : 1, ny = g ? g.ny : 1;
+  var caseRad = getCaseAngle(box, g) * Math.PI / 180;
+  var caseQuarter = (getCaseAngle(box, g) % 180 === 90);
   var cw = w / nx, ch = h / ny;
   var inset = Math.min(2, cw * 0.05, ch * 0.05);
   var shade = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2);
@@ -172,6 +213,10 @@ function drawCaseGrid(box, w, h) {
       if (tapeAlongX) ctx.fillRect(-cw / 2 + inset, -tape / 2, cw - 2 * inset, tape);
       else ctx.fillRect(-tape / 2, -ch / 2 + inset, tape, ch - 2 * inset);
       ctx.strokeRect(-cw / 2 + inset, -ch / 2 + inset, cw - 2 * inset, ch - 2 * inset);
+      ctx.rotate(caseRad); // l'etichetta segue la rotazione della cassa
+      drawCaseLabel(caseQuarter ? ch - 2 * inset : cw - 2 * inset, caseQuarter ? cw - 2 * inset : ch - 2 * inset);
+      ctx.strokeStyle = "rgba(2,48,71,0.45)";
+      ctx.lineWidth = 1;
       ctx.restore();
     }
   }
@@ -1192,6 +1237,7 @@ function updatePalletFromPLC(pallet) {
   state.Approach.y   = Number(pallet.ApproachY) / 10; 
   state.NBoxA        = Number(pallet.NBoxA); 
   state.NBoxB        = Number(pallet.NBoxB); 
+  state.CornerLabelling = Number(pallet.CornerLabelling) === 1;
 
   state.pallet.w     = Math.min(state.palletReal.w,FixedMaxComposition);
   state.pallet.h     = Math.min(state.palletReal.h,FixedMaxComposition);
@@ -1351,6 +1397,20 @@ function updatePalletFromPLC(pallet) {
   }
 }
 
+// Risultato verso FactoryTalk: con l'ActiveX PalComposeBrowser va direttamente al VBA (evento MessageReceived),
+// con il browser standard di FT viene scaricato come RuntimeData.csv e letto dal VBA nella cartella Download
+function sendResultToHMI(csvContent) {
+  if (window.PalComposeHost) { window.PalComposeHost.send(csvContent); return; }
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "RuntimeData.csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
 var MAX_BOXES_PLC = 60; // posizioni disponibili per layer nel PLC (vedi CreateLayerStructure nel VBA)
 
 SaveBtn.onclick          = function() {
@@ -1488,15 +1548,7 @@ SaveBtn.onclick          = function() {
           for (const key in palletModel.CommonVariable) { csvContent += `CommonVariable,${key},${palletModel.CommonVariable[key]},,,\n`; }
           palletModel.LayerA.forEach(box => { csvContent += `LayerA,${box.id},${box.PositionX},${box.PositionY},${box.PositionR},${box.PickType},${box.DepositType}\n`; }); // Layer A
           palletModel.LayerB.forEach(box => { csvContent += `LayerB,${box.id},${box.PositionX},${box.PositionY},${box.PositionR},${box.PickType},${box.DepositType}\n`; }); // Layer B
-          // --- Download CSV ---
-          const blob = new Blob([csvContent], { type: "text/csv" });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = "RuntimeData.csv";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(link.href);
+          sendResultToHMI(csvContent);
           showHMIPopup({
             title: titlePopup[3],
             message: messagesPopup[7],
@@ -1509,15 +1561,7 @@ SaveBtn.onclick          = function() {
         text: buttonTextPopup[4],
         class: "primary",
         onClick: function() {
-          let csvContent = "Saved,FALSE";
-          const blob = new Blob([csvContent], { type: "text/csv" });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = "RuntimeData.csv";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(link.href);
+          sendResultToHMI("Saved,FALSE");
           showHMIPopup({
             title: titlePopup[4],
             message: messagesPopup[8],

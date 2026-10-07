@@ -77,7 +77,17 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
 |-----------|------|-----|--------|
 | **A. Attuale migliorata** (fatto) | File JS + download CSV | Nessuna installazione | Dipende dalla cartella Download e dal comportamento dei download di WebView2 |
 | **B. Ponte diretto controllo ↔ VBA** | ~~Scartata~~ | | Verificato in impianto: `SEWebBrowser` v14 ha solo `Back`, `Forward`, `InitialURL`, `Refresh`, `ShowAddressBar`, `Stop`, `URL`, `UseParameter`, senza eventi né esecuzione di script; `URL` letta dal VBA resta quella impostata (non segue la navigazione della pagina), quindi non si può usare per il ritorno dei dati |
+| **B2. ActiveX PalCompose.Browser** (fatto, cartella `ActiveX/`) | Controllo C# con WebView2: `PageData` verso la pagina, evento `MessageReceived` verso il VBA | Niente file, niente Download, 3D con modelli reali | Da installare con `install.bat` su ogni PC HMI; da provare in FactoryTalk |
 | **C. Server locale** (Node-RED / Python / .NET) + OPC UA o FactoryTalk Linx | La pagina legge e scrive i tag via HTTP/WebSocket | Architettura pulita; risolve anche la vista 3D (pagina servita via http) | Un servizio da installare e mantenere |
 | **D. FactoryTalk Optix** | Piattaforma Rockwell con web e OPC UA nativi | Moderna | È una migrazione |
 
 Conclusione: con il controllo attuale il ritorno dati dalla pagina può avvenire solo tramite file (download) o tramite un server locale (C). La soluzione A, con le correzioni fatte, resta quella consigliata finché non si vuole installare un servizio.
+
+## Etichette casse (CornerLabelling)
+
+Il tag `SizeWork.Outfeed.CornerLabelling` viene letto dal VBA (costante `TAG_CORNER_LABELLING`, da verificare il percorso completo) e passato alla pagina.
+
+- `1`: etichetta ad angolo, sullo spigolo destra/alto della cassa a 0° vista dall'alto.
+- `0`: etichetta laterale, al centro del lato destro.
+
+L'etichetta ruota con la cassa, sia nel 2D sia nel 3D. Il valore è solo letto: non viene riscritto nel PLC.

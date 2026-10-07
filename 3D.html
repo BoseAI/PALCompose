@@ -144,14 +144,18 @@
     if (alongX) { g.moveTo(0, s / 2); g.lineTo(s, s / 2); } else { g.moveTo(s / 2, 0); g.lineTo(s / 2, s); }
     g.stroke();
   }
-  function paintLabel(g, s) {
-    var x = s * 0.3, y = s * 0.3, w = s * 0.4, h = s * 0.3;
-    g.fillStyle = "#fbfbf7"; g.fillRect(x, y, w, h);
+  // Etichetta rettangolare (texture 512x256 = proporzione 2:1, si adatta a laterale e ad angolo)
+  function paintLabel(g, w, h) {
+    g.fillStyle = "#fbfbf7"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "#9aa1a8"; g.lineWidth = 4; g.strokeRect(2, 2, w - 4, h - 4);
     g.fillStyle = "#222";
     var r = rand(11);
-    for (var bx = x + w * 0.08; bx < x + w * 0.92; bx += 2 + Math.floor(r() * 3)) g.fillRect(bx, y + h * 0.45, 1 + Math.floor(r() * 2), h * 0.4);
-    g.fillRect(x + w * 0.08, y + h * 0.12, w * 0.55, h * 0.1);
-    g.fillRect(x + w * 0.08, y + h * 0.28, w * 0.35, h * 0.07);
+    for (var bx = w * 0.06; bx < w * 0.94; bx += 3 + Math.floor(r() * 4)) g.fillRect(bx, h * 0.52, 1 + Math.floor(r() * 3), h * 0.34);
+    g.fillRect(w * 0.06, h * 0.12, w * 0.5, h * 0.09);
+    g.fillRect(w * 0.06, h * 0.27, w * 0.32, h * 0.07);
+    g.fillRect(w * 0.62, h * 0.12, w * 0.3, h * 0.22);
+    g.fillStyle = "#fbfbf7"; g.fillRect(w * 0.64, h * 0.14, w * 0.26, h * 0.18);
+    g.fillStyle = "#222"; g.font = "bold " + Math.round(h * 0.14) + "px Arial"; g.fillText("SSCC", w * 0.66, h * 0.29);
   }
 
   // ===== PALLET (legno, generato) =====
@@ -208,14 +212,20 @@
     return best;
   }
 
+  // Rotazione della singola cassa: quella del deposito, +90° se le casse sono girate rispetto al deposito (picking wheel)
+  function getCaseAngle(box, grid) {
+    var a = Number(box.angle) || 0;
+    if (grid && grid.rotated !== (a % 180 === 90)) a = (a + 90) % 360;
+    return a;
+  }
+
   var caseW = state.boxSize.w, caseD = state.boxSize.h;
   var kraft = canvasTexture(256, function (g, s) { paintKraft(g, s, 7); });
   var kraftTop = canvasTexture(256, function (g, s) { paintKraft(g, s, 9); paintTape(g, s, caseW >= caseD); });
-  var kraftFront = canvasTexture(256, function (g, s) { paintKraft(g, s, 13); paintLabel(g, s); });
   var matSide = new THREE.MeshStandardMaterial({ map: kraft, roughness: 0.9 });
   var caseMaterials = [matSide, matSide,                                               // +x, -x
                        new THREE.MeshStandardMaterial({ map: kraftTop, roughness: 0.85 }), matSide, // +y, -y
-                       new THREE.MeshStandardMaterial({ map: kraftFront, roughness: 0.9 }), matSide]; // +z, -z
+                       matSide, matSide];                                                       // +z, -z
 
   // pezzi singoli: un'unica geometria per tutte le casse (InstancedMesh = una sola chiamata di disegno)
   var instances = [];
@@ -226,7 +236,7 @@
     var g = getCaseGrid(box);
     if (!g) { fallbackDeposits.push({ box: box, cx: cx, cz: cz }); return; }
     var stepX = box.w / g.nx, stepZ = box.h / g.ny;
-    var yaw = (g.rotated ? Math.PI / 2 : 0) + (box.angle >= 180 ? Math.PI : 0);
+    var yaw = getCaseAngle(box, g) * Math.PI / 180;
     for (var i = 0; i < g.nx; i++) {
       for (var j = 0; j < g.ny; j++) {
         instances.push({ x: cx - box.w / 2 + stepX * (i + 0.5), z: cz + box.h / 2 - stepZ * (j + 0.5), yaw: yaw });
@@ -245,6 +255,56 @@
     });
     cases.castShadow = cases.receiveShadow = true;
     scene.add(cases);
+    addCaseLabels();
+  }
+
+  // ===== ETICHETTE SULLE CASSE =====
+  // Cassa a 0° vista dall'alto: lato destro = +X, lato alto (2D) = -Z.
+  // CornerLabelling = true  -> etichetta piegata sull'angolo destra/alto (metà su +X, metà su -Z)
+  // CornerLabelling = false -> etichetta laterale al centro del lato destro (+X)
+  function addCaseLabels() {
+    var LABEL_H = 100, LABEL_SIDE_LEN = 150, LABEL_CORNER_LEN = 100, OUT = 0.8; // mm
+    var cw = caseW - CASE_GAP, cd = caseD - CASE_GAP;
+    var cy = CASE_HEIGHT * 0.12;                       // centro etichetta rispetto al centro cassa
+    var lh = Math.min(LABEL_H, CASE_HEIGHT * 0.6);
+    var labelTex = (function () {
+      var c = document.createElement("canvas"); c.width = 512; c.height = 256;
+      paintLabel(c.getContext("2d"), 512, 256);
+      var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return t;
+    })();
+    var labelMat = new THREE.MeshStandardMaterial({ map: labelTex, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2 });
+    function plane(len, u0, u1) {                      // piano con una porzione orizzontale della texture
+      var geo = new THREE.PlaneGeometry(len * MM, lh * MM);
+      var uv = geo.attributes.uv;
+      for (var i = 0; i < uv.count; i++) uv.setX(i, u0 + uv.getX(i) * (u1 - u0));
+      return geo;
+    }
+    var parts = [];                                    // [geometria, matrice locale nella cassa]
+    var local = new THREE.Matrix4(), rot = new THREE.Matrix4();
+    if (state.CornerLabelling) {
+      var lc = Math.min(LABEL_CORNER_LEN, cw * 0.9, cd * 0.9);
+      // metà sul lato -Z (alto in 2D) e metà sul lato +X: la texture continua attorno allo spigolo
+      rot.makeRotationY(Math.PI);
+      parts.push([plane(lc, 0.5, 1), new THREE.Matrix4().makeTranslation((cw / 2 - lc / 2) * MM, cy * MM, (-cd / 2 - OUT) * MM).multiply(rot.clone())]);
+      rot.makeRotationY(Math.PI / 2);
+      parts.push([plane(lc, 0, 0.5), new THREE.Matrix4().makeTranslation((cw / 2 + OUT) * MM, cy * MM, (-cd / 2 + lc / 2) * MM).multiply(rot.clone())]);
+    } else {
+      var ls = Math.min(LABEL_SIDE_LEN, cd * 0.85);
+      rot.makeRotationY(Math.PI / 2);
+      parts.push([plane(ls, 0, 1), new THREE.Matrix4().makeTranslation((cw / 2 + OUT) * MM, cy * MM, 0).multiply(rot.clone())]);
+    }
+    var m4c = new THREE.Matrix4(), q2 = new THREE.Quaternion(), upY = new THREE.Vector3(0, 1, 0), unit = new THREE.Vector3(1, 1, 1);
+    parts.forEach(function (p) {
+      var mesh = new THREE.InstancedMesh(p[0], labelMat, instances.length);
+      instances.forEach(function (it, k) {
+        q2.setFromAxisAngle(upY, it.yaw);
+        m4c.compose(new THREE.Vector3(it.x * MM, (PALLET_HEIGHT + CASE_HEIGHT / 2) * MM, it.z * MM), q2, unit);
+        mesh.setMatrixAt(k, m4c.clone().multiply(p[1]));
+      });
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+    });
   }
   // depositi che non si riescono a dividere in casse: un unico blocco
   fallbackDeposits.forEach(function (f) {
@@ -280,11 +340,16 @@
     (state.LayerType === "LayerB" ? "Layer B" : "Layer A") + " · " + state.boxes.length + " deposits · " + instances.length + " cases";
 
   // ===== ROBOT (solo se i modelli sono stati incorporati con tools/embed-models.bat) =====
+  // Con l'ActiveX PalComposeBrowser la pagina è servita via https://palcompose.local/ e il modello si legge
+  // direttamente dalla cartella, senza bisogno di models.js
   var animateRobot = null;
   var models = window.PALCOMPOSE_MODELS || {};
   var robotKey = Object.keys(models).filter(function (k) { return /\.obj$/i.test(k); })[0];
-  if (robotKey) {
-    var robot = new THREE.OBJLoader().parse(atob(models[robotKey]));
+  if (!robotKey && window.PalComposeHost) {
+    new THREE.OBJLoader().load("./Assets/3D/Rmk3.obj", function (obj) { setupRobot(obj); startLoop(); }, undefined, function () {});
+  }
+  if (robotKey) setupRobot(new THREE.OBJLoader().parse(atob(models[robotKey])));
+  function setupRobot(robot) {
     robot.scale.setScalar(0.003);
     robot.position.set(-2, 0, -0.8);
     robot.traverse(function (child) {
@@ -313,11 +378,13 @@
   function render() { renderPending = false; renderer.render(scene, camera); }
   function requestRender() { if (!renderPending) { renderPending = true; requestAnimationFrame(render); } }
   controls.addEventListener("change", requestRender);
-  if (animateRobot) {
+  var loopRunning = false;
+  function startLoop() {
+    if (loopRunning || !animateRobot) return;
+    loopRunning = true;
     (function loop() { requestAnimationFrame(loop); animateRobot(); renderer.render(scene, camera); })();
-  } else {
-    requestRender();
   }
+  if (animateRobot) startLoop(); else requestRender();
 
   var topView = false;
   document.getElementById("btnTopView").onclick = function () {

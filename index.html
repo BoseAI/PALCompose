@@ -167,7 +167,12 @@
   // della schermata FT si riparte sempre dai dati del PLC
   let stateOld = null;
   try { stateOld = JSON.parse(sessionStorage.getItem("state") || "null"); } catch (e) { stateOld = null; }
-  if (!stateOld || Object.keys(stateOld).length === 0) { updatePalletFromPLC(palletData); }
+  // Dati PLC: dall'ActiveX PalComposeBrowser (PalComposeHost) oppure dal file RuntimeLayerData.js scritto dal VBA
+  var plcData = (window.PalComposeHost && window.PalComposeHost.data) || (typeof palletData !== "undefined" ? palletData : null);
+  if (!stateOld || Object.keys(stateOld).length === 0) {
+    if (plcData) { updatePalletFromPLC(plcData); }
+    else { showHMIPopup({ title: titlePopup[2] + " 0", message: "No data received from the PLC", headerColor: "#EA053A", buttons: [] }); }
+  }
   else { sessionStorage.removeItem("state"); state = stateOld; state.Init = false; applyStateToUI(); selectHighestIdBox(); draw(); }
 
 </script>

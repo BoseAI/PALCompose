@@ -1,17 +1,18 @@
 ' =====================================================================================
-'  Codice VBA del display "777 - PalCompose" (oggetto ThisDisplay)
-'  Da incollare al posto del codice esistente in ThisDisplay (Alt+F11 nel display).
-'  Richiede Module1.bas aggiornato (WaitMs, NumToText, TextToNum).
+'  Codice VBA del display "777 - PalCompose" (oggetto ThisDisplay) - VERSIONE ACTIVEX
+'  Da usare con il controllo PalCompose.Browser al posto di SEWebBrowserControl1.
+'  Il controllo nel display deve chiamarsi PalBrowser1 (Proprieta' -> Name) ed essere
+'  esposto al VBA. Nessun file: i dati vanno alla pagina con PageData e il salvataggio
+'  torna con l'evento PalBrowser1_MessageReceived.
+'  Richiede Module1.bas aggiornato (NumToText, TextToNum).
 ' =====================================================================================
 Option Explicit
 
 ' ===== Configurazione =====
 Private Const MAX_BOXES As Integer = 60                       ' posizioni per layer nel PLC
 Private Const BACKGROUND_DISPLAY As String = "000 - VBA_code"
-Private Const FILE_PATH_JS As String = "C:\Users\IMA-1\Documents\IMA\PalCompose\RuntimeLayerData.js"
-Private Const FILE_PATH_CSV As String = "C:\Users\IMA-1\Downloads\RuntimeData.csv"
-Private Const BROWSER_URL As String = "file:///C:/Users/IMA-1/Documents/IMA/PalCompose/Index.html"
-Private Const CSV_POLL_MS As Long = 500                       ' ogni quanto controllare se la pagina ha salvato
+Private Const APP_FOLDER As String = "C:\Users\IMA-1\Documents\IMA\PalCompose"   ' cartella con Index.html
+Private Const START_PAGE As String = "Index.html"
 ' True  = tutti i tag di un layer scritti con una sola richiesta (PendingValue + WritePendingValues)
 ' False = un tag alla volta, come nella versione precedente
 Private Const USE_BATCH_WRITE As Boolean = True
@@ -260,51 +261,25 @@ Private Sub WritePending(tg As TagGroup, ByVal groupName As String)
 End Sub
 
 
+' ===== Stato tra apertura display e salvataggio =====
+Private mLayerCompositionA As Object
+Private mLayerCompositionB As Object
+Private mLayerType As String
+Private mBusy As Boolean
+
+
 Private Sub Display_AnimationStart()
 
-    ' --- Dichiarazioni ---
     Dim collLodedDisplayList As Displays
     Dim oBackgroundDisplay As Object
     Dim iRetVal As Integer
     Dim xLayerType As Boolean
     Dim sErrorCode As String
-    Dim gLayerComposition As Object
-    Dim gLayerCompositionA As Object
-    Dim gLayerCompositionB As Object
     Dim runtimeValuesLayer As Object
-    Dim jsonData As String
-    Dim LayerType As String
-
-    ' --- Oggetti FileSystem ---
-    Dim fso As Object
-    Dim file As Object
-    Dim attempt As Integer
-
-    ' --- Variabili CSV ---
-    Dim firstLine As String
-    Dim firstFields As Variant
-    Dim isSaved As Boolean
-
-    ' --- Layer e Tag ---
-    Dim layerAComp As Object
-    Dim layerBComp As Object
-    Dim tgA As TagGroup
-    Dim tgB As TagGroup
-
-    Dim line As String
-    Dim fields As Variant
-    Dim idx As Long
-    Dim boxX As Object
-    Dim tgX As TagGroup
-
-    ' --- Altri ---
-    Dim ctrl As Object
     Dim i As Integer
 
     On Error GoTo ErrHandler
-
-    isSaved = False
-    Set fso = CreateObject("Scripting.FileSystemObject")
+    mBusy = False
 
     ' --- Recupero display background ---
     Set collLodedDisplayList = LoadedDisplays
@@ -314,84 +289,79 @@ Private Sub Display_AnimationStart()
             Exit For
         End If
     Next i
-
     If oBackgroundDisplay Is Nothing Then
         Set oBackgroundDisplay = Application.ShowDisplay(BACKGROUND_DISPLAY, "/ZA")
     End If
 
-    ' --- Creazione strutture layer ---
-    Set gLayerCompositionA = CreateLayerStructure("LayerA")
-    Set gLayerCompositionB = CreateLayerStructure("LayerB")
+    ' --- Creazione strutture layer (restano in memoria fino al salvataggio) ---
+    Set mLayerCompositionA = CreateLayerStructure("LayerA")
+    Set mLayerCompositionB = CreateLayerStructure("LayerB")
 
     iRetVal = oBackgroundDisplay.ReadTag_Any("{Internal_tag\PalCompose\L_St_xLayerType}", xLayerType, sErrorCode)
-
     If (iRetVal = 4) And (xLayerType <> 0) Then
-        Set gLayerComposition = gLayerCompositionA
-        LayerType = "LayerA"
+        mLayerType = "LayerA"
+        Set runtimeValuesLayer = BuildPalletValues(mLayerCompositionA, mLayerType)
     Else
-        Set gLayerComposition = gLayerCompositionB
-        LayerType = "LayerB"
+        mLayerType = "LayerB"
+        Set runtimeValuesLayer = BuildPalletValues(mLayerCompositionB, mLayerType)
     End If
 
-    ' --- Lettura PLC ---
-    ' Se la lettura fallisce non si apre l'editor: si lavorerebbe sui dati del file precedente
-    ' e al salvataggio si sovrascriverebbe il PLC con una composizione sbagliata.
-    Set runtimeValuesLayer = BuildPalletValues(gLayerComposition, LayerType)
+    ' Lettura PLC fallita: non si apre l'editor (si lavorerebbe su dati non validi)
     If runtimeValuesLayer Is Nothing Then GoTo GoBack
-    jsonData = ToJSON(runtimeValuesLayer)
 
-    ' --- Scrittura file JS ---
-    Set file = fso.CreateTextFile(FILE_PATH_JS, True, False)
-    file.WriteLine "const palletData = " & jsonData & ";"
-    file.Close
-    Set file = Nothing
+    ' --- Dati alla pagina e apertura (nessun file) ---
+    PalBrowser1.PageData = ToJSON(runtimeValuesLayer)
+    PalBrowser1.LoadApp APP_FOLDER, START_PAGE
 
-    ' --- Cancella un eventuale CSV rimasto da una sessione precedente ---
-    ' Senza questo il ciclo di attesa lo troverebbe subito e scriverebbe nel PLC dati vecchi;
-    ' inoltre il browser salverebbe il nuovo file come "RuntimeData (1).csv" e non verrebbe mai letto.
-    If fso.FileExists(FILE_PATH_CSV) Then fso.DeleteFile FILE_PATH_CSV, True
+    Set collLodedDisplayList = Nothing
+    Set oBackgroundDisplay = Nothing
+    Exit Sub
 
-    Set ctrl = Me.Application.ActiveDisplay.FindElement("SEWebBrowserControl1")
-    ctrl.url = BROWSER_URL
+ErrHandler:
+    Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - errore " & Err.Number & ": " & Err.Description, ftDiagSeverityError
+    Resume GoBack
+GoBack:
+    On Error Resume Next
+    GoToLayerDisplay
+End Sub
 
-    ' --- Attesa del salvataggio dalla pagina (senza occupare la CPU) ---
-    Do While Not fso.FileExists(FILE_PATH_CSV)
-        WaitMs CSV_POLL_MS
-    Loop
 
-    ' --- Apertura CSV: il browser potrebbe non averlo ancora rilasciato ---
-    For attempt = 1 To 20
-        Err.Clear
-        On Error Resume Next
-        Set file = fso.OpenTextFile(FILE_PATH_CSV, 1)
-        On Error GoTo ErrHandler
-        If Not file Is Nothing Then Exit For
-        WaitMs 100
-    Next attempt
-    If file Is Nothing Then
-        Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - impossibile aprire " & FILE_PATH_CSV, ftDiagSeverityError
-        GoTo GoBack
-    End If
+' ===== Salvataggio dalla pagina: il testo e' lo stesso CSV che prima finiva in Download =====
+Private Sub PalBrowser1_MessageReceived(ByVal message As String)
 
-    ' --- Lettura CSV ---
-    If Not file.AtEndOfStream Then
-        firstLine = file.ReadLine
-        firstFields = Split(firstLine, ",")
-        If UBound(firstFields) >= 1 Then
-            If UCase(Trim(firstFields(1))) = "TRUE" Then isSaved = True
+    Dim lines As Variant
+    Dim fields As Variant
+    Dim line As String
+    Dim n As Long
+    Dim idx As Long
+    Dim isSaved As Boolean
+    Dim layerAComp As Object
+    Dim layerBComp As Object
+    Dim tgA As TagGroup
+    Dim tgB As TagGroup
+    Dim tgX As TagGroup
+    Dim boxX As Object
+
+    If mBusy Then Exit Sub          ' doppio clic su Salva: il primo messaggio basta
+    mBusy = True
+    On Error GoTo ErrHandler
+
+    lines = Split(Replace(message, vbCr, ""), vbLf)
+    If UBound(lines) >= 0 Then
+        fields = Split(lines(0), ",")
+        If UBound(fields) >= 1 Then
+            If UCase(Trim(fields(1))) = "TRUE" Then isSaved = True
         End If
     End If
 
-    If isSaved Then
-        Set layerAComp = gLayerCompositionA("LayerComposition")
-        Set layerBComp = gLayerCompositionB("LayerComposition")
-        Set tgA = gLayerCompositionA("LayerCompositionTG")
-        Set tgB = gLayerCompositionB("LayerCompositionTG")
+    If isSaved And Not (mLayerCompositionA Is Nothing Or mLayerCompositionB Is Nothing) Then
+        Set layerAComp = mLayerCompositionA("LayerComposition")
+        Set layerBComp = mLayerCompositionB("LayerComposition")
+        Set tgA = mLayerCompositionA("LayerCompositionTG")
+        Set tgB = mLayerCompositionB("LayerCompositionTG")
 
-        If Not file.AtEndOfStream Then file.ReadLine      ' intestazione
-
-        Do While Not file.AtEndOfStream
-            line = Trim(file.ReadLine)
+        For n = 2 To UBound(lines)                     ' riga 0 = Saved, riga 1 = intestazione
+            line = Trim(lines(n))
             If line <> "" Then
                 fields = Split(line, ",")
                 Select Case fields(0)
@@ -406,15 +376,13 @@ Private Sub Display_AnimationStart()
 
                     Case "LayerA", "LayerB"
                         If UBound(fields) >= 6 Then
+                            Set boxX = Nothing
+                            idx = CLng(TextToNum(fields(1)))
                             If fields(0) = "LayerA" Then
                                 Set tgX = tgA
-                                Set boxX = Nothing
-                                idx = CLng(TextToNum(fields(1)))
                                 If idx >= 1 And idx <= layerAComp("boxes").Count Then Set boxX = layerAComp("boxes")(idx)
                             Else
                                 Set tgX = tgB
-                                Set boxX = Nothing
-                                idx = CLng(TextToNum(fields(1)))
                                 If idx >= 1 And idx <= layerBComp("boxes").Count Then Set boxX = layerBComp("boxes")(idx)
                             End If
                             If Not boxX Is Nothing Then
@@ -429,38 +397,37 @@ Private Sub Display_AnimationStart()
                         End If
                 End Select
             End If
-        Loop
+        Next n
 
         If USE_BATCH_WRITE Then
             WritePending tgA, "LayerA"
             WritePending tgB, "LayerB"
         End If
-
-        Application.LogDiagnosticsMessage "File valido: Saved = TRUE"
+        Application.LogDiagnosticsMessage "Salvataggio PalCompose: Saved = TRUE"
     Else
-        Application.LogDiagnosticsMessage "File valido: Saved = FALSE"
+        Application.LogDiagnosticsMessage "Salvataggio PalCompose: Saved = FALSE"
     End If
 
-    file.Close
-    Set file = Nothing
-
-    If fso.FileExists(FILE_PATH_CSV) Then fso.DeleteFile FILE_PATH_CSV, True
-
 GoBack:
-    If LayerType = "LayerA" Then
+    On Error Resume Next
+    GoToLayerDisplay
+    Exit Sub
+
+ErrHandler:
+    Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - errore salvataggio " & Err.Number & ": " & Err.Description, ftDiagSeverityError
+    Resume GoBack
+End Sub
+
+
+Private Sub PalBrowser1_BrowserError(ByVal description As String)
+    Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - browser: " & description, ftDiagSeverityError
+End Sub
+
+
+Private Sub GoToLayerDisplay()
+    If mLayerType = "LayerA" Then
         Application.ExecuteCommand "Display 281 - SizeData_Layer_TypeA_1"
     Else
         Application.ExecuteCommand "Display 291 - SizeData_Layer_TypeB_1"
     End If
-
-    Set collLodedDisplayList = Nothing
-    Set oBackgroundDisplay = Nothing
-    Exit Sub
-
-ErrHandler:
-    Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - errore " & Err.Number & ": " & Err.Description, ftDiagSeverityError
-    On Error Resume Next
-    If Not file Is Nothing Then file.Close
-    Resume GoBack
-
 End Sub
