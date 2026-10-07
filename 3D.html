@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PalComposeTOOL 3D</title>
+  <link rel="stylesheet" href="./style/style3D.css"> 
+</head>
+<body>
+
+<button id="2D" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; position:absolute; left:10px; top:10px; padding:12; width:100px; height:70px;">
+  <img id="svgPressed2D" src="Assets/Icon/2D_Notpressed.svg" style="width:100%; height:100%; transform: translate(0%, 15%);">     
+  <img id="svgNormal2D" src="Assets/Icon/2D_pressed.svg" style="width:100%; height:100%; transform: translate(0%, 15%);">
+</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./libs/three/build/three.module.js",
+    "three/addons/": "./libs/three/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+  let state = JSON.parse(localStorage.getItem("state"));
+
+  function setupButtonWithSVG3D(button, svgNormal, svgPressed) {
+    if (typeof svgNormal === 'string') svgNormal = document.getElementById(svgNormal);
+    if (typeof svgPressed === 'string') svgPressed = document.getElementById(svgPressed);
+    function press() { svgNormal.style.display = 'block'; svgPressed.style.display = 'none'; }
+    function release() { svgNormal.style.display = 'none'; svgPressed.style.display = 'block'; }
+    button.addEventListener('pointerdown', press);
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointerleave', release);
+    svgPressed.style.display = 'block';
+    svgNormal.style.display = 'none';
+  }
+
+  var DueD = document.getElementById("2D");
+  setupButtonWithSVG3D(DueD, 'svgNormal2D', 'svgPressed2D');
+  DueD.onclick = function() { window.location.href = "Index.html";  };
+
+  const PALLET_HEIGHT = 144;
+  const BOX_HEIGHT = 300;
+  const SCALE = 0.005;
+
+  // ===== SCENA =====
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf0f0f0);
+
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 100);
+  camera.position.set(0,10,13);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, BOX_HEIGHT*SCALE, 0);
+  controls.update();
+
+  // ===== LUCI =====
+  scene.add(new THREE.HemisphereLight(0xffffff,0x444444,4,5));
+  const light = new THREE.DirectionalLight(0xffffff,0.8);
+  light.position.set(3,5,2);
+  scene.add(light);
+
+  // ===== PALLET =====
+  const loaderPallet = new GLTFLoader();
+  loaderPallet.load('./Assets/3D/Pallet.glb', function(gltf) {
+      const palletModel = gltf.scene;
+      const targetWidth  = state.palletReal.w * SCALE;
+      const targetHeight = PALLET_HEIGHT * SCALE;
+      const targetDepth  = state.palletReal.h * SCALE;
+      const bbox = new THREE.Box3().setFromObject(palletModel);
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      palletModel.scale.set(targetWidth  / size.x, targetHeight / size.y, targetDepth  / size.z );
+      palletModel.position.set(0, targetHeight / 2, 0);
+      scene.add(palletModel);
+  });
+
+  // ===== ROBOT OBJ =====
+const objLoader = new OBJLoader();
+objLoader.load('./Assets/3D/Rmk3.obj', function(robot) {
+    robot.scale.set(0.015, 0.015, 0.015); // scala adatta alla scena
+    robot.position.set(-10, 0, -4);       // posizionato accanto al pallet
+
+    robot.traverse(child => {
+        if (child.isMesh) {
+            child.material = new THREE.MeshStandardMaterial({ color: 0xE6C200 });
+                    console.log(child.name, child.parent.name);
+        }
+    });
+
+    scene.add(robot);
+
+    const base      = robot.getObjectByName("__-_BASE__rotating_");
+    const armPrime  = robot.getObjectByName("__-_ARM__prime_");
+    const armSecond = robot.getObjectByName("__-_ARM__second_");
+    const armRot    = robot.getObjectByName("__-_ARM__rotating_");
+    const headPith  = robot.getObjectByName("__-_HEAD__pith_");
+    const headRot   = robot.getObjectByName("__-_HEAD__rotating_");
+    const leftGrip  = robot.getObjectByName("__-_GRIPS LEFT_GRIP");
+    const rightGrip = robot.getObjectByName("__-_GRIPS RIGHT_GRIP");
+
+    // esempio animazione giunti
+    function animateRobotJoints() {
+        requestAnimationFrame(animateRobotJoints);
+
+        if(base) base.rotation.y += 0.005;          
+        if(armPrime) armPrime.rotation.z = Math.sin(Date.now()*0.001) * 0.5;  
+        if(armSecond) armSecond.rotation.z = Math.sin(Date.now()*0.0015) * 0.3; 
+        if(armRot) armRot.rotation.y = Math.sin(Date.now()*0.0012) * 0.5; 
+        if(headRot) headRot.rotation.z = Math.sin(Date.now()*0.002) * 0.2; 
+        if(leftGrip && rightGrip) {
+            leftGrip.rotation.y  = Math.sin(Date.now()*0.003) * 0.5;  
+            rightGrip.rotation.y = -Math.sin(Date.now()*0.003) * 0.5;
+        }
+
+        renderer.render(scene, camera); // solo se non hai già un animate globale
+    }
+
+    animateRobotJoints();
+});
+
+  // ===== BOXES =====
+  const boxMeshes = [];
+  const loader = new GLTFLoader();
+  loader.load('./Assets/3D/CartoneEtichetta.glb', function (gltf) {
+    const originalModel = gltf.scene;
+    state.boxes.forEach(box => {
+      const isAB = box.depositType && box.depositType.toUpperCase() === 'AB';
+      const instances = isAB ? 2 : 1;
+      for (let i = 0; i < instances; i++) {
+        const mesh = originalModel.clone(true);
+        const box3 = new THREE.Box3().setFromObject(mesh);
+        const size = new THREE.Vector3();
+        box3.getSize(size);
+        let targetWidth  = box.w * SCALE;
+        let targetHeight = BOX_HEIGHT * SCALE;
+        let targetDepth  = box.h * SCALE;
+        if (box.angle === 90 || box.angle === 270) {
+          const temp = targetWidth;
+          targetWidth = targetDepth;
+          targetDepth = temp;
+        }
+        if (isAB) { targetDepth = targetDepth / 2; }
+        const scaleX = targetWidth  / size.x;
+        const scaleY = targetHeight / size.y;
+        const scaleZ = targetDepth  / size.z;
+        mesh.scale.set(scaleX, scaleY, scaleZ);
+        if (box.angle) { mesh.rotation.y = THREE.MathUtils.degToRad(box.angle);}
+        const xCentered = ((box.x + box.w / 2 - state.palletReal.w / 2) + state.Offset.x) * SCALE;
+        const zCentered = -((box.y + box.h / 2 - state.palletReal.h / 2) + state.Offset.y) * SCALE;
+        const baseY = PALLET_HEIGHT * SCALE + targetHeight / 2;
+        mesh.position.set(xCentered, baseY, zCentered);
+        if (isAB) {
+          const direction = (i === 0) ? -1 : 1;
+          const localOffset = new THREE.Vector3(0, 0, direction * (targetDepth / 2));
+          localOffset.applyQuaternion(mesh.quaternion);
+          mesh.position.add(localOffset);
+        }
+        scene.add(mesh);
+        boxMeshes.push(mesh);
+      }
+    });
+  });
+
+  function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene,camera);
+  }
+
+  animate();
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+</script>
+</body>
+</html>

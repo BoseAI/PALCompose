@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PalComposeTOOL</title>
+  <link rel="stylesheet" href="./style/style.css"> 
+</head>
+
+<body>
+
+  <header id="pageTitle">
+    PalComposeTOOL – Configurazione Pallet
+  </header>
+  <div id="app">      
+    <div id="Sidebar"> 
+      <fieldset style="display:flex; gap:10%; flex-wrap:wrap;" data-key="palletSize">
+        <legend></legend>
+        <label style="flex:1;">X:<input type="number" id="sidePalletW" value="1200" min="100" step="0.1"></label>
+        <label style="flex:1;">Y:<input type="number" id="sidePalletH" value="800" min="100" step="0.1"></label>
+      </fieldset>
+
+      <fieldset style="display:flex; gap:10%; flex-wrap:wrap;" data-key="maxComposition">
+        <legend></legend>
+        <label style="flex:1;">X:<input type="number" id="sideCompositionW" value="1200" min="100" step="0.1"></label>
+        <label style="flex:1;">Y:<input type="number" id="sideCompositionH" value="800" min="100" step="0.1"></label>
+      </fieldset>
+      
+      <fieldset style="display:flex; gap:10%; flex-wrap:wrap; margin-top:8px;" data-key="caseSize">
+        <legend></legend>
+        <label style="flex:1;">X:<input type="number" id="sideBoxW" value="250" min="10" step="0.1"></label>
+        <label style="flex:1;">Y:<input type="number" id="sideBoxH" value="125" min="10" step="0.1"></label>
+        <label style="flex:1;"><input type="number" id="sideMargin" value="10" min="0" step="0.1" data-key="compositionMarign"></label>
+      </fieldset>
+
+      <fieldset style="display:flex; gap:10%; flex-wrap:wrap;" data-key="approach">
+        <legend></legend>
+        <label style="flex:1;">X:<input type="number" id="ApproachX" value="-30" min="-100" step="1"></label>
+        <label style="flex:1;">Y:<input type="number" id="ApproachY" value="-30" min="-100" step="1"></label>
+      </fieldset>
+      
+      <hr style="margin:8px 0;">  
+
+      <h4 style="margin:4px 0;" data-key="offsetDepX"></h4>
+      <h4 style="margin:4px 0;" data-key="offsetDepY"></h4>
+
+      <hr style="margin:8px 0;">  
+
+      <h4 style="margin:4px 0;" data-key="placedCasesTitle"></h4>
+      <div id="SidebarContent" style="font-size:12px; color:#333; min-height:30px;" data-key="noBoxes"></div>
+    </div>
+
+    <main>
+        <canvas id="c"></canvas>
+    </main>  
+      
+    <!-- Controls Panel -->
+    <aside id="controls">    
+    <button id="toggleSidebar" style="margin:6px auto 0; width:80%; display:block;" data-key="settingsBtn"></button>
+
+    <!-- Sidebar Panel -->
+
+    <!-- Action Buttons -->
+    <fieldset style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;" data-key="actions">
+      <legend></legend>
+      <button id="DepositA" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:2%; width:22.5%; height:20%;">
+        <img id="svgPressedA" src="Assets/Icon/DepositA_notpressed.svg" style="width:70%; height:70%;">
+        <img id="svgNormalA" src="Assets/Icon/DepositA_pressed.svg" style="width:70%; height:70%;">
+      </button>
+      <button id="DepositB" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:2%; width:22.5%; height:20%;">
+        <img id="svgPressedB" src="Assets/Icon/DepositB_notpressed.svg" style="width:70%; height:70%;">
+        <img id="svgNormalB" src="Assets/Icon/DepositB_pressed.svg" style="width:70%; height:70%;">
+      </button>
+      <button id="DepositAB" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:2%; width:22.5%; height:20%;">
+        <img id="svgPressedAB" src="Assets/Icon/DepositAB_notpressed.svg" style="width:70%; height:70%;">
+        <img id="svgNormalAB" src="Assets/Icon/DepositAB_pressed.svg" style="width:70%; height:70%;">
+      </button>
+     <button id="swapBtn" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:2%; width:22.5%; height:20%;">
+        <img id="svgPressedSwapCase" src="Assets/Icon/SwapCase_notpressed.svg" style="width:70%; height:70%;">
+        <img id="svgNormalSwapCase" src="Assets/Icon/SwapCase_pressed.svg" style="width:70%; height:70%;">
+      </button>
+      <button id="DeleteDeposit" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedDeleteDeposit" src="Assets/Icon/DepositDelete_notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalDeleteDeposit" src="Assets/Icon/DepositDelete_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="ClearPallet" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedDeletePallet" src="Assets/Icon/PalletDelete_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalDeletePallet" src="Assets/Icon/PalletDelete_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="AutoFill" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedAutoFill" src="Assets/Icon/AutoFill_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalAutoFill" src="Assets/Icon/AutoFill_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="3D" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressed3D" src="Assets/Icon/3D_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormal3D" src="Assets/Icon/3D_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+    </fieldset> 
+
+    <!-- Position Buttons -->
+    <fieldset style="display:flex; flex-wrap:wrap; gap:6px; margin-top:0%" data-key="position">
+      <legend></legend>
+      <button id="snapTopLeft" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedsnapTopLeft" src="Assets/Icon/TopLeft_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalsnapTopLeft" src="Assets/Icon/TopLeft_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="snapTopRight" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedsnapTopRight" src="Assets/Icon/TopRight_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalsnapTopRight" src="Assets/Icon/TopRight_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="snapBottomLeft" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedsnapBottomLeft" src="Assets/Icon/BottomLeft_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalsnapBottomLeft" src="Assets/Icon/BottomLeft_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="snapBottomRight" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedsnapBottomRight" src="Assets/Icon/BottomRight_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalsnapBottomRight" src="Assets/Icon/BottomRight_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+      <button id="centerBoxesBtn" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:22.5%; height:20%;">
+        <img id="svgPressedCentreBox" src="Assets/Icon/Centre_Notpressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+        <img id="svgNormalCentreBox" src="Assets/Icon/Centre_pressed.svg" style="width:80%; height:80%; transform: translate(0%, 15%); ">
+      </button>
+    </fieldset>
+
+    <fieldset style="display:flex; gap:6px; margin-top:0%;" data-key="caseRotation">
+      <legend></legend>
+      <button id="rot0" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:10; width:23%; height:20%;">0°</button>
+      <button id="rot90" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:10; width:23%; height:20%;">90°</button>
+      <button id="rot180" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:10; width:23%; height:20%;">180°</button>
+      <button id="rot270" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:10; width:23%; height:20%;">270°</button>
+    </fieldset>
+
+    <!-- D-Pad -->
+    <fieldset style="margin-top:0;" data-key="moveCase">
+      <legend></legend>
+      <div style="display:flex; gap:0px; align-items:center;">
+        <span>
+          <span data-key="speedLabel"></span>
+          <span id="speedRatioVal">1</span>x
+        </span>
+        <input id="speedRatio" type="range" min="1" max="30" value="1" class="barra">
+      </div>
+      <div id="dpad" style="display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:0px; justify-content:center; align-items:center;">
+        <div></div>
+        <button id="btnUp">↑</button>
+        <div></div>
+        <button id="btnLeft">←</button>
+        <div></div>
+        <button id="btnRight">→</button>
+        <div></div>
+        <button id="btnDown">↓</button>
+        <div></div>
+      </div>
+    </fieldset>
+
+    <button id="Save" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; padding:0; width:40%; aspect-ratio:2/1; margin:5% auto;">
+      <img id="svgPressedSave" src="Assets/Icon/Exit_NotPressed.svg" style="width:80%; height:80%; transform: translate(0%, 0%); ">
+      <img id="svgNormalSave" src="Assets/Icon/Exit_Pressed.svg" style="width:80%; height:80%; transform: translate(0%, 0%); ">
+    </button>            
+    </aside>      
+  </div>  
+<script src="RuntimeLayerData.js"></script>
+<script src="./Functions/main.js"></script>
+<script>
+
+  let stateOld = JSON.parse(localStorage.getItem("state") || "null");
+  if (!stateOld || Object.keys(stateOld).length === 0) { updatePalletFromPLC(palletData); }
+  else { localStorage.removeItem("state"); state = stateOld; state.Init = false; }
+
+</script>
+</body>
+</html>

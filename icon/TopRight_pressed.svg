@@ -1,0 +1,19 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="22"
+  height="21"
+  viewBox="0 0 512 512"
+  fill="#FFF"
+>
+  <g transform="rotate(90 256 256) translate(-15, 45) scale(0.8)">
+    <!-- Cornice -->
+    <path d="M448,34H34V478H478V34Zm0,414H64V64H448Z"/>
+
+    <!-- Freccia ruotata di 180° -->
+    <polygon
+      points="147.48 199.26 147.48 229.26 229.26 229.26 229.26 147.48 199.26 147.48 199.26 178.05 124.69 103.48 103.48 124.69 178.05 199.26 147.48 199.26"
+      transform="rotate(180 166 166)"
+    />
+  </g>
+</svg>
+

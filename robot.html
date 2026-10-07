@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>PalComposeTOOL 3D</title>
+  <link rel="stylesheet" href="./style/style3D.css">
+  <!-- Inclusione GSAP CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+</head>
+<body>
+
+<button id="2D" class="defaultnormale" style="display:flex; align-items:center; justify-content:center; position:absolute; left:10px; top:10px; padding:12; width:100px; height:70px;">
+  <img id="svgPressed2D" src="Assets/Icon/2D_Notpressed.svg" style="width:100%; height:100%; transform: translate(0%, 15%);">     
+  <img id="svgNormal2D" src="Assets/Icon/2D_pressed.svg" style="width:100%; height:100%; transform: translate(0%, 15%);">
+</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./libs/three/build/three.module.js",
+    "three/addons/": "./libs/three/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+// ===== STATE =====
+let state = JSON.parse(localStorage.getItem("state"));
+
+// ===== FUNZIONI HELPER =====
+function setupButtonWithSVG3D(button, svgNormal, svgPressed) {
+    svgNormal = typeof svgNormal === 'string' ? document.getElementById(svgNormal) : svgNormal;
+    svgPressed = typeof svgPressed === 'string' ? document.getElementById(svgPressed) : svgPressed;
+    function press() { svgNormal.style.display = 'block'; svgPressed.style.display = 'none'; }
+    function release() { svgNormal.style.display = 'none'; svgPressed.style.display = 'block'; }
+    button.addEventListener('pointerdown', press);
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointerleave', release);
+    svgPressed.style.display = 'block';
+    svgNormal.style.display = 'none';
+}
+
+// ===== BUTTON 2D =====
+setupButtonWithSVG3D(document.getElementById("2D"), 'svgNormal2D', 'svgPressed2D');
+document.getElementById("2D").onclick = () => window.location.href = "Index.html";
+
+// ===== COSTANTI =====
+const PALLET_HEIGHT = 144;
+const BOX_HEIGHT = 300;
+const SCALE = 0.005;
+
+// ===== SCENA =====
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf0f0f0);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 100);
+camera.position.set(0,10,13);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, BOX_HEIGHT*SCALE, 0);
+controls.update();
+
+// ===== LUCI =====
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 4));
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(3,5,2);
+scene.add(directionalLight);
+
+// ===== PALLET =====
+const loaderPallet = new GLTFLoader();
+loaderPallet.load('./Assets/3D/Pallet.glb', function(gltf) {
+    const palletModel = gltf.scene;
+    const targetWidth  = state.palletReal.w * SCALE;
+    const targetHeight = PALLET_HEIGHT * SCALE;
+    const targetDepth  = state.palletReal.h * SCALE;
+    const bbox = new THREE.Box3().setFromObject(palletModel);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+    palletModel.scale.set(targetWidth/size.x, targetHeight/size.y, targetDepth/size.z);
+    palletModel.position.set(0, targetHeight/2, 0);
+    scene.add(palletModel);
+});
+
+// ===== FUNZIONE GERARCHIA =====
+function printHierarchy(object, indent = '') {
+    console.log(indent + object.name + ' (' + object.type + ')');
+    object.children.forEach(child => printHierarchy(child, indent + '  '));
+}
+
+// ===== ROBOT OBJ =====
+const objLoader = new OBJLoader();
+objLoader.load('./Assets/3D/Robot.obj', function(robot) {
+    robot.scale.set(0.15, 0.15, 0.15);
+    robot.position.set(-10, 0, -4);
+
+    robot.traverse(child => {
+        if(child.isMesh) child.material = new THREE.MeshStandardMaterial({ color: 0xE6C200 });
+    });
+
+    scene.add(robot);
+
+    const base      = robot.getObjectByName('BASE');      
+    const armPrime  = robot.getObjectByName('ARM_PRIME');
+    const armSecond = robot.getObjectByName('ARM_SECOND');
+    const armRot    = robot.getObjectByName('ARM_ROT');
+    const wrist     = robot.getObjectByName('WRIST');
+    const leftGrip  = robot.getObjectByName('LEFT_GRIP');
+    const rightGrip = robot.getObjectByName('RIGHT_GRIP');
+    const head      = robot.getObjectByName('HEAD');
+
+    // Gerarchia catena cinetica
+    if(base && armPrime && armSecond && armRot && wrist){
+        base.add(armPrime);
+        armPrime.add(armSecond);
+        armSecond.add(armRot);
+        armRot.add(wrist);
+        if(leftGrip)  wrist.add(leftGrip);
+        if(rightGrip) wrist.add(rightGrip);
+    }
+
+    // Limiti giunti
+    const jointLimits = {
+        armPrime:  { min: -0.7, max: 0.7 },
+        armSecond: { min: -0.5, max: 0.5 },
+        armRot:    { min: -1.0, max: 1.0 },
+        wrist:     { min: -0.3, max: 0.3 },
+        head:      { min: -0.2, max: 0.2 }
+    };
+
+// ===== ANIMAZIONE GIUNTI CON VINCOLI =====
+function animateRobotJoints() {
+    requestAnimationFrame(animateRobotJoints);
+
+    const t = Date.now() * 0.001;
+
+    // Arm Prime: rotazione limitata attorno al pivot
+    if (armPrime) {
+        let angle = Math.sin(t) * 0.5;
+        armPrime.rotation.z = THREE.MathUtils.clamp(angle, jointLimits.armPrime.min, jointLimits.armPrime.max);
+    }
+
+    // Arm Secondo
+    if (armSecond) {
+        let angle = Math.sin(t * 1.2) * 0.3;
+        armSecond.rotation.z = THREE.MathUtils.clamp(angle, jointLimits.armSecond.min, jointLimits.armSecond.max);
+    }
+
+    // Rotazione del giunto di rotazione (ARM_ROT)
+    if (armRot) {
+        let angle = Math.sin(t * 1.5) * 0.5;
+        armRot.rotation.y = THREE.MathUtils.clamp(angle, jointLimits.armRot.min, jointLimits.armRot.max);
+    }
+
+    // Wrist
+    if (wrist) {
+        let angle = Math.sin(t * 2) * 0.2;
+        wrist.rotation.z = THREE.MathUtils.clamp(angle, jointLimits.wrist.min, jointLimits.wrist.max);
+    }
+
+    // Head
+    if (head) {
+        let angle = Math.sin(t * 1.8) * 0.2;
+        head.rotation.z = THREE.MathUtils.clamp(angle, jointLimits.head.min, jointLimits.head.max);
+    }
+
+    // Pinza apertura/chiusura
+    if (leftGrip && rightGrip) {
+        let gripAngle = Math.sin(t * 3) * 0.5;
+        leftGrip.rotation.y  = gripAngle;
+        rightGrip.rotation.y = -gripAngle;
+    }
+
+    renderer.render(scene, camera);
+}
+animateRobotJoints();
+
+    console.log('--- Gerarchia del robot ---');
+    printHierarchy(robot);
+});
+
+// ===== BOXES =====
+const boxMeshes = [];
+const loaderBox = new GLTFLoader();
+loaderBox.load('./Assets/3D/CartoneEtichetta.glb', function(gltf) {
+    const originalModel = gltf.scene;
+    state.boxes.forEach(box => {
+        const isAB = box.depositType && box.depositType.toUpperCase() === 'AB';
+        const instances = isAB ? 2 : 1;
+        for(let i=0;i<instances;i++){
+            const mesh = originalModel.clone(true);
+            const bbox = new THREE.Box3().setFromObject(mesh);
+            const size = new THREE.Vector3();
+            bbox.getSize(size);
+
+            let targetWidth  = box.w*SCALE;
+            let targetHeight = BOX_HEIGHT*SCALE;
+            let targetDepth  = box.h*SCALE;
+            if(box.angle===90||box.angle===270){
+                [targetWidth,targetDepth] = [targetDepth,targetWidth];
+            }
+            if(isAB) targetDepth/=2;
+
+            mesh.scale.set(targetWidth/size.x, targetHeight/size.y, targetDepth/size.z);
+
+            if(box.angle) mesh.rotation.y = THREE.MathUtils.degToRad(box.angle);
+
+            const xCentered = ((box.x+box.w/2 - state.palletReal.w/2)+state.Offset.x)*SCALE;
+            const zCentered = -((box.y+box.h/2 - state.palletReal.h/2)+state.Offset.y)*SCALE;
+            const baseY = PALLET_HEIGHT*SCALE + targetHeight/2;
+
+            mesh.position.set(xCentered, baseY, zCentered);
+
+            if(isAB){
+                const direction = (i===0)?-1:1;
+                const localOffset = new THREE.Vector3(0,0,direction*(targetDepth/2));
+                localOffset.applyQuaternion(mesh.quaternion);
+                mesh.position.add(localOffset);
+            }
+
+            scene.add(mesh);
+            boxMeshes.push(mesh);
+        }
+    });
+});
+
+// ===== ANIMATE GLOBALE =====
+function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene,camera);
+}
+animate();
+
+window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ===== NUOVO ROBOT SCHELETRATO =====
+const robot2Base = new THREE.Object3D();
+robot2Base.position.set(5,0,-3);
+scene.add(robot2Base);
+
+const robot2Shoulder = new THREE.Object3D();
+robot2Base.add(robot2Shoulder);
+
+const robot2UpperArm = new THREE.Mesh(new THREE.BoxGeometry(0.5,3,0.5), new THREE.MeshStandardMaterial({color:0x5555ff}));
+robot2UpperArm.position.y = 1.5;
+robot2Shoulder.add(robot2UpperArm);
+
+const robot2Elbow = new THREE.Object3D();
+robot2Elbow.position.y = 3;
+robot2Shoulder.add(robot2Elbow);
+
+const robot2LowerArm = new THREE.Mesh(new THREE.BoxGeometry(0.4,2,0.4), new THREE.MeshStandardMaterial({color:0x555555}));
+robot2LowerArm.position.y = 1;
+robot2Elbow.add(robot2LowerArm);
+
+const robot2Wrist = new THREE.Object3D();
+robot2Wrist.position.y = 2;
+robot2Elbow.add(robot2Wrist);
+
+const robot2Gripper = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.2,0.6), new THREE.MeshStandardMaterial({color:0xff0000}));
+robot2Gripper.position.y = 0.1;
+robot2Wrist.add(robot2Gripper);
+
+// Cassa da prendere
+const robot2Box = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color:0x00ff00}));
+robot2Box.position.set(6,0.5,-3);
+scene.add(robot2Box);
+
+// Funzioni presa/rilascio
+function robot2PickBox(){
+    robot2Gripper.add(robot2Box);
+    robot2Box.position.set(0,0.6,0);
+}
+function robot2ReleaseBox(){
+    scene.add(robot2Box);
+    const pos = robot2Gripper.getWorldPosition(new THREE.Vector3());
+    robot2Box.position.set(pos.x,0.5,pos.z);
+}
+
+// Movimento con GSAP
+function robot2MoveTo(x,y,z,duration=2,onComplete=null){
+    gsap.to(robot2Gripper.position,{
+        x:x, y:y, z:z,
+        duration:duration,
+        onComplete:onComplete
+    });
+}
+
+// Animazione giunti nuovo robot
+function animateRobot2Joints(){
+    requestAnimationFrame(animateRobot2Joints);
+    if(robot2Shoulder) robot2Shoulder.rotation.z = Math.sin(Date.now()*0.001)*0.5;
+    if(robot2Elbow)    robot2Elbow.rotation.z    = Math.sin(Date.now()*0.0015)*0.3;
+    if(robot2Wrist)    robot2Wrist.rotation.z    = Math.sin(Date.now()*0.002)*0.2;
+    renderer.render(scene,camera);
+}
+animateRobot2Joints();
+
+// Demo movimento robot 2
+function robot2Demo(){
+    robot2MoveTo(6,2,-3,1,()=>{
+        robot2PickBox();
+        robot2MoveTo(0,3,0,2,()=>{
+            robot2MoveTo(0,1,0,1,()=>{
+                robot2ReleaseBox();
+                robot2MoveTo(5,2,-3,1);
+            });
+        });
+    });
+}
+robot2Demo();
+
+</script>
+</body>
+</html>
