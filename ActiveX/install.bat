@@ -55,6 +55,22 @@ if defined WV2 (
     echo            Installare "Evergreen Standalone Installer" da Microsoft prima di usare il controllo.
 )
 
+rem --- Programmi che stanno usando il controllo (impedirebbero la sovrascrittura) ---
+:checkInUso
+set "INUSO="
+for /f "tokens=1,2 delims=," %%a in ('tasklist /m PalComposeBrowser.dll /fo csv /nh 2^>nul ^| find /i ".exe"') do (
+    if not defined INUSO echo.& echo Il controllo e' in uso da questi programmi:
+    set "INUSO=1"
+    echo    %%~a  ^(PID %%~b^)
+)
+if defined INUSO (
+    echo.
+    echo Chiudere i programmi elencati ^(FactoryTalk View Studio, Display Client^),
+    echo poi premere un tasto per riprovare. Ctrl+C per annullare.
+    pause >nul
+    goto :checkInUso
+)
+
 rem --- Copia file ---
 if not exist "%DEST%" mkdir "%DEST%"
 xcopy "%SRC%\*" "%DEST%\" /E /I /Y /Q >nul
