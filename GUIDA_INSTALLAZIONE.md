@@ -36,7 +36,7 @@ Copia dalla cartella scaricata a `C:\IMA\Tools\PalCompose`, **sovrascrivendo**:
 | `Functions\` | tutta la cartella (la logica ora è divisa in più file) |
 | `libs\three\three.bundle.js` | nuovo: serve alla vista 3D senza server |
 | `Assets\Icon\` | le icone (se le hai già uguali, puoi saltare) |
-| `tools\` | facoltativo: serve solo per il robot nel 3D |
+| `style\` | grafica |
 
 Non serve copiare `README.md`, `ANALISI.md`, `GUIDA_INSTALLAZIONE.md`, `ActiveX\`, `VBA\`, `FTView\`. Il server Python non serve più.
 

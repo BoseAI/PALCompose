@@ -17,6 +17,8 @@ Editor delle composizioni pallet per FactoryTalk View SE: pagina web (2D + 3D) n
 | `VBA/` | codice VBA del display (versione browser Rockwell e versione ActiveX) e `Module1.bas` | già dentro gli XML |
 | `ActiveX/` | controllo PalCompose.Browser: `install.bat`, `verifica.bat`, `uninstall.bat`, `bin/`, sorgente in `src/` | `install.bat` su ogni PC Client |
 | `tools/build_ftview_xml.py` | rigenera `FTView/v*/` dal VBA | no |
+| `tools/build_zip.py` | crea `dist/PalCompose.zip` (cartella `PalCompose/` pronta da copiare) | no |
+| `PalComposeGuide.docx` | guida all'utilizzo per l'operatore/tecnico | no |
 
 Guida passo passo: `GUIDA_INSTALLAZIONE.md`. Analisi e scelte tecniche: `ANALISI.md`. Dettagli ActiveX: `ActiveX/README.md`.
 

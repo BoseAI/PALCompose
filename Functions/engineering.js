@@ -7,28 +7,39 @@
 // Campi modificabili. scale = fattore tra il valore mostrato (mm) e quello del PLC (decimi di mm)
 var ENGINEERING_FIELDS = [
   { group: "Layer" },
-  { key: "LayerType", label: "Layer", type: "select", options: [["LayerA", "Layer A"], ["LayerB", "Layer B"]] },
-  { key: "CornerLabelling", label: "Corner label", type: "check" },
+  { key: "LayerType", label: "Layer", type: "select", options: [["LayerA", "Layer A"], ["LayerB", "Layer B"]],
+    hint: "Layer being edited. When saving it can be mirrored onto the other layer." },
+  { key: "CornerLabelling", label: "Corner label", type: "check",
+    hint: "On: label on the case corner (right/bottom). Off: label on the right side." },
   { group: "Pallet (mm)" },
-  { key: "PalletX", label: "Pallet X", scale: 10, min: 100 },
-  { key: "PalletY", label: "Pallet Y", scale: 10, min: 100 },
+  { key: "PalletX", label: "Pallet X", scale: 10, min: 100, hint: "Pallet length." },
+  { key: "PalletY", label: "Pallet Y", scale: 10, min: 100, hint: "Pallet width." },
   { group: "Case (mm)" },
-  { key: "CaseX", label: "Case X", scale: 10, min: 10 },
-  { key: "CaseY", label: "Case Y", scale: 10, min: 10 },
+  { key: "CaseX", label: "Case X", scale: 10, min: 10, hint: "Single case, side along X (case at 0°)." },
+  { key: "CaseY", label: "Case Y", scale: 10, min: 10, hint: "Single case, side along Y (case at 0°)." },
   { group: "Deposit" },
-  { key: "NBoxX", label: "Cases per deposit X", min: 1, step: 1 },
-  { key: "NBoxY", label: "Cases per deposit Y", min: 1, step: 1 },
+  { key: "NBoxX", label: "Cases per deposit X", min: 1, step: 1, hint: "Cases picked and placed together, along X." },
+  { key: "NBoxY", label: "Cases per deposit Y", min: 1, step: 1, hint: "Cases picked and placed together, along Y." },
   { key: "PickType", label: "Pick type", type: "select", options: [
-      [0, "0 - A only"], [1, "1 - A + B (split X)"], [2, "2 - AB only"], [3, "3 - A + B (split Y)"]] },
-  { key: "NBoxCHA", label: "Cases in A (split)", min: 0, step: 1 },
-  { key: "NBoxCHB", label: "Cases in B (split)", min: 0, step: 1 },
-  { key: "PickingWheel", label: "Picking wheel rotated", type: "check", on: 90, off: 0 },
+      [0, "0 - A only"], [1, "1 - A + B (split X)"], [2, "2 - AB only"], [3, "3 - A + B (split Y)"]],
+    hint: "0/2: whole deposit in one pick. 1/3: deposit split in part A and part B (along X or Y)." },
+  { key: "PickingWheel", label: "Picking wheel rotated", type: "check", on: 90, off: 0,
+    hint: "Cases arrive rotated by 90°: deposit X and Y are swapped." },
+  { key: "NBoxCHA", label: "Cases in A (split)", min: 0, step: 1, hint: "Pick type 1/3 only: cases of the deposit in part A." },
+  { key: "NBoxCHB", label: "Cases in B (split)", min: 0, step: 1, readOnly: true, hint: "Calculated: remaining cases (part B)." },
   { group: "Offsets (mm)" },
-  { key: "OffsetDepositX", label: "Deposit offset X", scale: 10 },
-  { key: "OffsetDepositY", label: "Deposit offset Y", scale: 10 },
-  { key: "ApproachX", label: "Approach X", scale: 10 },
-  { key: "ApproachY", label: "Approach Y", scale: 10 }
+  { key: "OffsetDepositX", label: "Deposit offset X", scale: 10, hint: "Shift of the whole composition on the pallet, X." },
+  { key: "OffsetDepositY", label: "Deposit offset Y", scale: 10, hint: "Shift of the whole composition on the pallet, Y." },
+  { key: "ApproachX", label: "Approach X", scale: 10, hint: "The head comes in from this X offset before placing." },
+  { key: "ApproachY", label: "Approach Y", scale: 10, hint: "The head comes in from this Y offset before placing." }
 ];
+
+// Casse sull'asse diviso (stessa regola di updateDepositDimensions in plc.js)
+function engineeringSplitTotal(pickType, nx, ny, wheel) {
+  if (pickType === 1) return wheel ? ny : nx;
+  if (pickType === 3) return wheel ? nx : ny;
+  return 0;
+}
 
 // Stato corrente -> dati nel formato del PLC (come RuntimeLayerData.js)
 function stateToPlcData() {
@@ -86,7 +97,8 @@ function showEngineeringPopup() {
   ENGINEERING_FIELDS.forEach(function (f) {
     if (f.group) { html += "<div class=\"eng-group\">" + f.group + "</div>"; return; }
     var v = data[f.key];
-    html += "<label class=\"eng-field\"><span>" + f.label + "</span>";
+    html += "<label class=\"eng-field\"><div class=\"eng-text\"><span>" + f.label + "</span>" +
+            (f.hint ? "<small>" + f.hint + "</small>" : "") + "</div>";
     if (f.type === "select") {
       html += "<select data-key=\"" + f.key + "\">" + f.options.map(function (o) {
         return "<option value=\"" + o[0] + "\"" + (String(o[0]) === String(v) ? " selected" : "") + ">" + o[1] + "</option>";
@@ -96,16 +108,41 @@ function showEngineeringPopup() {
       html += "<input type=\"checkbox\" data-key=\"" + f.key + "\"" + (on ? " checked" : "") + ">";
     } else {
       html += "<input type=\"number\" data-key=\"" + f.key + "\" value=\"" + (f.scale ? v / f.scale : v) + "\"" +
-              (f.min !== undefined ? " min=\"" + f.min + "\"" : "") + " step=\"" + (f.step || "any") + "\">";
+              (f.min !== undefined ? " min=\"" + f.min + "\"" : "") + " step=\"" + (f.step || "any") + "\"" +
+              (f.readOnly ? " readonly tabindex=\"-1\"" : "") + ">";
     }
     html += "</label>";
   });
-  html += "</div><div class=\"hm-popup-footer\">" +
+  html += "</div><div class=\"eng-note\"><b>Apply</b>: applies the data and keeps the deposits where they are (deposits that no longer fit are removed). " +
+    "<b>Apply &amp; clear</b>: applies the data and empties the pallet.</div><div class=\"hm-popup-footer\">" +
     "<button class=\"hm-btn primary\" data-act=\"keep\">Apply</button>" +
     "<button class=\"hm-btn primary\" data-act=\"clear\">Apply &amp; clear</button>" +
     "<button class=\"hm-btn primary\" data-act=\"cancel\">Cancel</button></div></div>";
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
+
+  // Casse in B calcolate; campi A/B attivi solo con presa divisa
+  function el(key) { return overlay.querySelector("[data-key=\"" + key + "\"]"); }
+  function refreshSplit() {
+    var pick = Number(el("PickType").value);
+    var total = engineeringSplitTotal(pick, parseInt(el("NBoxX").value, 10) || 1, parseInt(el("NBoxY").value, 10) || 1, el("PickingWheel").checked);
+    var split = total > 0;
+    var a = el("NBoxCHA"), b = el("NBoxCHB");
+    a.disabled = b.disabled = !split;
+    a.closest(".eng-field").classList.toggle("eng-off", !split);
+    b.closest(".eng-field").classList.toggle("eng-off", !split);
+    if (split) {
+      var na = Math.max(1, Math.min(total - 1, parseInt(a.value, 10) || 1));
+      if (total < 2) na = total;
+      a.value = na;
+      b.value = total - na;
+    }
+  }
+  ["PickType", "NBoxX", "NBoxY", "NBoxCHA", "PickingWheel"].forEach(function (k) {
+    el(k).addEventListener("input", refreshSplit);
+    el(k).addEventListener("change", refreshSplit);
+  });
+  refreshSplit();
 
   overlay.querySelector(".hm-popup-footer").onclick = function (e) {
     var act = e.target.closest("button") && e.target.closest("button").getAttribute("data-act");

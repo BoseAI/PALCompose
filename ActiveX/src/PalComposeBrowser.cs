@@ -101,6 +101,12 @@ namespace PalCompose
         [DispId(8)] double Zoom { get; set; }
         /// <summary>Scala di disegno: 1 = un pixel CSS per pixel del controllo, ignorando lo zoom DPI di Windows (default)</summary>
         [DispId(9)] double RenderScale { get; set; }
+        /// <summary>Larghezza di progetto della pagina (px). Se > 0 lo zoom si adatta: la pagina vede sempre DesignWidth x DesignHeight</summary>
+        [DispId(10)] int DesignWidth { get; set; }
+        /// <summary>Altezza di progetto della pagina (px)</summary>
+        [DispId(11)] int DesignHeight { get; set; }
+        /// <summary>Dimensioni del controllo e della pagina, scala di Windows, zoom: per la diagnosi</summary>
+        [DispId(12)] string DiagnosticInfo { get; }
     }
 
     /// <summary>Eventi ricevuti dal VBA (Private Sub NomeControllo_MessageReceived(...)).</summary>
@@ -138,6 +144,8 @@ namespace PalCompose
         private CoreWebView2Controller _controller;
         private CoreWebView2 _core;
         private double _zoom = 1.0;
+        private int _designW = 1016, _designH = 760;   // pagina progettata per il display 777 (1016 x 760)
+        private string _pageViewport = "";
         private double _renderScale = 1.0;
         private bool _initStarted;
         private string _appFolder = "";
@@ -202,8 +210,55 @@ namespace PalCompose
         public double Zoom
         {
             get { return _zoom; }
-            set { _zoom = value > 0 ? value : 1.0; OnUi(() => { if (_controller != null) _controller.ZoomFactor = _zoom; }); }
+            set { _zoom = value > 0 ? value : 1.0; OnUi(ApplyZoom); }
         }
+
+        public int DesignWidth
+        {
+            get { return _designW; }
+            set { _designW = Math.Max(0, value); OnUi(ApplyZoom); }
+        }
+
+        public int DesignHeight
+        {
+            get { return _designH; }
+            set { _designH = Math.Max(0, value); OnUi(ApplyZoom); }
+        }
+
+        public string DiagnosticInfo
+        {
+            get
+            {
+                return OnUiSync(() =>
+                {
+                    RECT pr; IntPtr parent = GetParent(Handle);
+                    string parentSize = parent != IntPtr.Zero && GetClientRect(parent, out pr) ? (pr.Right - pr.Left) + "x" + (pr.Bottom - pr.Top) : "?";
+                    int dpi = 96;
+                    try { dpi = (int)GetDpiForWindow(Handle); } catch { }
+                    return "control " + ClientSize.Width + "x" + ClientSize.Height + " px, parent " + parentSize +
+                           ", Windows DPI " + dpi + " (" + Math.Round(dpi / 96.0 * 100) + "%)" +
+                           ", zoom " + (_controller != null ? Math.Round(_controller.ZoomFactor, 3).ToString(System.Globalization.CultureInfo.InvariantCulture) : "-") +
+                           ", rasterization " + (_controller != null ? Math.Round(_controller.RasterizationScale, 3).ToString(System.Globalization.CultureInfo.InvariantCulture) : "-") +
+                           ", page " + (_pageViewport == "" ? "?" : _pageViewport);
+                });
+            }
+        }
+
+        // Zoom automatico: la pagina vede sempre l'area di progetto (DesignWidth x DesignHeight),
+        // qualunque sia la dimensione reale del controllo (risoluzione, scala del display FactoryTalk, DPI)
+        private void ApplyZoom()
+        {
+            if (_controller == null) return;
+            double z = _zoom;
+            if (_designW > 0 && _designH > 0 && ClientSize.Width > 0 && ClientSize.Height > 0)
+                z = _zoom * Math.Min(ClientSize.Width / (double)_designW, ClientSize.Height / (double)_designH) / _controller.RasterizationScale;
+            if (z > 0.1 && Math.Abs(_controller.ZoomFactor - z) > 0.001) _controller.ZoomFactor = z;
+        }
+
+        [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
+        [DllImport("user32.dll")] private static extern IntPtr GetParent(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
+        [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hWnd);
 
         public double RenderScale
         {
@@ -313,7 +368,7 @@ namespace PalCompose
                 _controller = await env.CreateCoreWebView2ControllerAsync(Handle);
                 _controller.ShouldDetectMonitorScaleChanges = false;
                 _controller.RasterizationScale = _renderScale;
-                _controller.ZoomFactor = _zoom;
+                ApplyZoom();
                 _controller.Bounds = ClientRectangle;
                 _controller.IsVisible = Visible;
                 _core = _controller.CoreWebView2;
@@ -387,7 +442,8 @@ namespace PalCompose
                     "(function(){var json=" + JsString(_pageData) + ";" +
                     "window.PalComposeHost=Object.freeze({version:1,dataJson:json," +
                     "get data(){try{return json?JSON.parse(json):null;}catch(e){return null;}}," +
-                    "send:function(m){window.chrome.webview.postMessage(String(m));}});})();";
+                    "send:function(m){window.chrome.webview.postMessage(String(m));}});" +
+                    "window.addEventListener('load',function(){window.chrome.webview.postMessage('" + InternalPrefix + "viewport:'+innerWidth+'x'+innerHeight+' @'+devicePixelRatio);});})();";
                 _hostScriptId = await _core.AddScriptToExecuteOnDocumentCreatedAsync(script);
             }
             catch (Exception ex) { ReportError("PageData: " + ex.Message); }
@@ -409,12 +465,21 @@ namespace PalCompose
             e.Cancel = true;   // pannello operatore: niente siti esterni
         }
 
+        private const string InternalPrefix = "__palcompose:";
+
         private void OnWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             if (!IsTrustedSource(e.Source)) return;
             string message;
             try { message = e.TryGetWebMessageAsString(); }
             catch { message = e.WebMessageAsJson; }
+            if (message != null && message.StartsWith(InternalPrefix, StringComparison.Ordinal))
+            {
+                // messaggi interni del controllo (non arrivano al VBA)
+                if (message.StartsWith(InternalPrefix + "viewport:", StringComparison.Ordinal))
+                    _pageViewport = message.Substring((InternalPrefix + "viewport:").Length);
+                return;
+            }
             try { MessageReceived?.Invoke(message); }
             catch (Exception ex) { _lastError = "MessageReceived (VBA): " + ex.Message; }
         }
@@ -466,7 +531,7 @@ namespace PalCompose
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (_controller != null) _controller.Bounds = ClientRectangle;
+            if (_controller != null) { _controller.Bounds = ClientRectangle; ApplyZoom(); }
         }
 
         protected override void OnVisibleChanged(EventArgs e)

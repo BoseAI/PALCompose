@@ -413,6 +413,12 @@ ErrHandler:
 End Sub
 
 
+' Pagina caricata: dimensioni reali del controllo e della pagina nella Diagnostics List (diagnosi della scala)
+Private Sub PalBrowser1_NavigationCompleted(ByVal success As Boolean, ByVal url As String)
+    Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - pagina " & url & " (ok=" & success & ") - " & PalBrowser1.DiagnosticInfo
+End Sub
+
+
 Private Sub PalBrowser1_BrowserError(ByVal description As String)
     Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - browser: " & description, ftDiagSeverityError
 End Sub

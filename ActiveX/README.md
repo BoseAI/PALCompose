@@ -62,6 +62,9 @@ Le proprietà vanno impostate dal VBA (come fa già il codice fornito), non dal 
 | `ExecuteScript(js)` | metodo | esegue codice nella pagina |
 | `ShowDevTools()` | metodo | apre gli strumenti di sviluppo (F12) per la diagnosi |
 | `IsReady`, `CurrentUrl`, `LastError` | proprietà | stato |
+| `DesignWidth`, `DesignHeight` | proprietà | dimensione per cui è disegnata la pagina (default 1016 × 760): la pagina viene ingrandita/ridotta per riempire il controllo, indipendentemente dal ridimensionamento di Windows. `0` = nessun adattamento |
+| `Zoom` | proprietà | fattore aggiuntivo (default 1) |
+| `DiagnosticInfo` | proprietà | dimensione controllo/finestra, DPI, zoom e viewport della pagina: il VBA la scrive nella Diagnostics List dopo il caricamento |
 | `AllowExternalNavigation` | proprietà | default `False`: siti esterni bloccati |
 | `MessageReceived(message)` | evento | testo inviato dalla pagina |
 | `NavigationCompleted(success, url)` | evento | pagina caricata |
