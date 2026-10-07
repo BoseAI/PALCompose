@@ -222,30 +222,49 @@ function drawCaseGrid(box, w, h) {
   }
 }
 
+// Riquadro informazioni del deposito: centrato in orizzontale, nella parte bassa del deposito
+// ma sopra la fascia dell'etichetta (che sta sul bordo destro o sull'angolo destra/basso)
+var ANGLE_ARROWS = { 0: "\u2192", 90: "\u2191", 180: "\u2190", 270: "\u2193" };
 function drawBoxText(box) {
-  var  lineHeight = BOX_FONT_SIZE + 2;
-  // Testi principali (non ruotati)
-  var  textX = mmToPx(box.x) + 4;
-  var  textY = mmToPx(box.y + box.h) - 120;
-  ctx.fillStyle = "#000";
-  // Testi principali (più grandi e in grassetto)
-  ctx.font = "bold " + (BOX_FONT_SIZE + 4) + "px Arial";
-  switch (box.depositType) { 
-    case "A":  ctx.fillText(box.id + "  A", textX, -textY - 3*lineHeight); break;
-    case "B":  ctx.fillText(box.id + "  B", textX, -textY - 3*lineHeight); break;
-    case "AB": ctx.fillText(box.id + " AB", textX, -textY - 3*lineHeight); break;
-  }
-  switch (box.angle) { 
-    case 0: ctx.fillText(">", textX + 70, -textY - 3*lineHeight); break;
-    case 90: ctx.fillText("^", textX + 70, -textY - 3*lineHeight); break;
-    case 180: ctx.fillText("<", textX + 70, -textY - 3*lineHeight); break;
-    case 270: ctx.fillText("v", textX + 70, -textY - 3*lineHeight); break;
-  }
-  // Altri testi
-  ctx.font = BOX_FONT_SIZE + "px Arial";
-  ctx.fillText("X: " + Math.ceil(box.x + box.w / 2), textX, -textY - 2*lineHeight);
-  ctx.fillText("Y: " + Math.ceil(box.y + box.h / 2), textX, -textY - lineHeight);
-  ctx.fillText("Rot: " + box.angle + "°", textX, -textY);
+  var w = mmToPx(box.w), h = mmToPx(box.h);
+  var cx = mmToPx(box.x + box.w / 2);
+  var bottom = -mmToPx(box.y);                         // in questo contesto la Y cresce verso il basso
+  var top = -mmToPx(box.y + box.h);
+  var title = box.id + "  " + box.depositType;
+  var line2 = "X " + Math.ceil(box.x + box.w / 2) + "   Y " + Math.ceil(box.y + box.h / 2);
+  var line3 = (ANGLE_ARROWS[box.angle] || "") + "  " + box.angle + "\u00B0";
+  var titleSize = 46, infoSize = 34, pad = 10, gap = 6;
+  // larghezza disponibile: lascia libera la fascia dell'etichetta sul lato destro
+  var labelBand = Math.max(3, mmToPx(LABEL_THICK)) + 6;
+  var maxW = w - 2 * labelBand;
+  ctx.font = "bold " + titleSize + "px Arial";
+  var tw = ctx.measureText(title).width;
+  ctx.font = infoSize + "px Arial";
+  tw = Math.max(tw, ctx.measureText(line2).width, ctx.measureText(line3).width);
+  var k = Math.min(1, (maxW - 2 * pad) / tw, (h - 2 * labelBand) / (titleSize + 2 * infoSize + 2 * gap + 2 * pad));
+  if (!(k > 0.35)) k = 0.35;                           // deposito molto piccolo: testo minimo leggibile
+  titleSize *= k; infoSize *= k; pad *= k; gap *= k;
+  var panelW = tw * k + 2 * pad;
+  var panelH = titleSize + 2 * infoSize + 2 * gap + 2 * pad;
+  var y0 = Math.max(top + 4, bottom - labelBand - panelH); // il più in basso possibile, sopra l'etichetta
+  var x0 = cx - panelW / 2;
+  ctx.save();
+  ctx.fillStyle = box.id === state.selectedId ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.82)";
+  ctx.strokeStyle = "rgba(2,48,71,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x0, y0, panelW, panelH, 6 * k); else ctx.rect(x0, y0, panelW, panelH);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#023047";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.font = "bold " + titleSize + "px Arial";
+  ctx.fillText(title, cx, y0 + pad);
+  ctx.font = infoSize + "px Arial";
+  ctx.fillText(line2, cx, y0 + pad + titleSize + gap);
+  ctx.fillText(line3, cx, y0 + pad + titleSize + infoSize + 2 * gap);
+  ctx.restore();
 }
 
 // Ridisegno raggruppato al prossimo frame: per eventi frequenti (trascinamento, D-pad)
