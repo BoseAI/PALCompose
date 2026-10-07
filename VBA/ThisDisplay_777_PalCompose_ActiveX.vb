@@ -16,6 +16,12 @@ Private Const START_PAGE As String = "Index.html"
 
 Private Const ROUTINE_NAME As String = "PALCOMPOSE"
 Private Const TAG_LAYER_TYPE As String = "Internal_tag\PalCompose\L_St_xLayerType"   ' True = LayerA
+
+' ===== Stato tra apertura display e salvataggio =====
+Private mLayerCompositionA As Object
+Private mLayerCompositionB As Object
+Private mLayerType As String
+Private mBusy As Boolean
 ' Etichetta ad angolo (1) o laterale (0): solo lettura, passato alla pagina per la visualizzazione
 Private Const TAG_CORNER_LABELLING As String = "[clogix]SizeWork.Outfeed.CornerLabelling"
 
@@ -236,11 +242,6 @@ Private Sub SetTagValue(tg As TagGroup, ByVal tagPath As String, ByVal v As Vari
 End Sub
 
 
-' ===== Stato tra apertura display e salvataggio =====
-Private mLayerCompositionA As Object
-Private mLayerCompositionB As Object
-Private mLayerType As String
-Private mBusy As Boolean
 
 
 ' Tipo di layer da editare (True = LayerA).
