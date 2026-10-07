@@ -185,6 +185,7 @@
   // Dati PLC: dall'ActiveX PalComposeBrowser (PalComposeHost) oppure dal file RuntimeLayerData.js scritto dal VBA
   var plcData = (window.PalComposeHost && window.PalComposeHost.data) || (typeof palletData !== "undefined" ? palletData : null);
   setupEngineeringMode();
+  fitControlsPanel();
   // Modalita' tecnico senza PLC: si parte dai dati di esempio di config.js
   if (!plcData && ENGINEERING_MODE) plcData = JSON.parse(JSON.stringify(PALCOMPOSE_CONFIG.defaultPlcData));
   if (!stateOld || Object.keys(stateOld).length === 0) {

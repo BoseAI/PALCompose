@@ -100,3 +100,5 @@ updateRotationButtons();
 updateToggleSidebarButton();
 updateRange();
 setupSwapButton(swapBtn, 'svgNormalSwapCase', 'svgPressedSwapCase');
+fitControlsPanel();
+window.addEventListener("resize", fitControlsPanel);

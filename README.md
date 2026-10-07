@@ -7,12 +7,11 @@ Editor delle composizioni pallet per FactoryTalk View SE: pagina web (2D + 3D) n
 | Percorso | Contenuto | Va sul PC HMI |
 |----------|-----------|---------------|
 | `index.html`, `3D.html` | pagine 2D e 3D | sì, in `C:\IMA\Tools\PalCompose` |
-| `Functions/` | logica della pagina 2D, divisa per argomento (vedi sotto) | sì, tutta la cartella |
+| `Functions/` | logica della pagina 2D, divisa per argomento (vedi sotto); `Functions/3d/` vista 3D e robot | sì, tutta la cartella |
 | `style/style.css` | grafica | sì |
-| `Assets/` | icone, immagine pallet 2D, modelli 3D facoltativi | sì |
+| `Assets/` | icone, immagine pallet 2D | sì |
 | `libs/three/three.bundle.js` | three.js per la vista 3D (funziona da `file:///`) | sì |
 | `RuntimeLayerData.js` | dati di esempio; in impianto lo riscrive il VBA | (generato) |
-| `tools/embed-models.bat` | incorpora i modelli 3D (robot) per l'uso senza ActiveX | facoltativo |
 | `FTView/v13`, `v14`, `v15` | display 777 da importare: `WebBrowser/` (browser Rockwell) e `ActiveX/` (PalCompose.Browser) | si importano in Studio |
 | `FTView/originale/` | export di riferimento da cui si generano i file sopra | no |
 | `VBA/` | codice VBA del display (versione browser Rockwell e versione ActiveX) e `Module1.bas` | già dentro gli XML |
@@ -48,3 +47,14 @@ tipo di presa (A, A+B, AB), casse nei canali A/B, ruota di presa, offset, approc
 - **Apply & clear**: applica e svuota il pallet.
 
 Senza PLC la pagina parte dai dati di `defaultPlcData`. In produzione `engineeringMode` deve restare `false`.
+
+## Functions/3d/ (vista 3D, caricati da `3D.html`)
+
+| File | Contenuto |
+|------|-----------|
+| `scene3d.js` | scena, pallet, casse e etichette, telecamera; espone `window.PC3D` |
+| `robot3d.js` | robot pallettizzatore 4 assi (stile FANUC M-410, costruito nel codice) e nastro a rulli |
+| `sim3d.js` | simulazione del ciclo: presa dal nastro, trasferimento ad arco, approccio, posa; comandi di riproduzione |
+
+Pulsante **Robot** nella vista 3D: mostra robot e nastro (angolo in alto a sinistra del pallet) e la barra
+con |◀ inizio, ◀◀ deposito precedente, ▶/❚❚ avvio/pausa, ▶▶ deposito successivo, ▶| fine, cursore per scorrere, velocità.

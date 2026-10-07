@@ -198,3 +198,30 @@ var  WARNING_SVG =
   "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\">" +
     "<path d=\"M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z\"/>" +
   "</svg>";
+
+// Il pannello comandi deve stare nell'altezza disponibile, senza barra di scorrimento:
+// se il contenuto e' piu' alto, viene rimpicciolito in proporzione (zoom CSS sul contenuto)
+function fitControlsPanel() {
+  var panel = document.getElementById("controls");
+  if (!panel) return;
+  var inner = document.getElementById("controlsInner");
+  if (!inner) {
+    inner = document.createElement("div");
+    inner.id = "controlsInner";
+    inner.style.display = "flex";            // stessa impaginazione a colonna del pannello originale
+    inner.style.flexDirection = "column";    // (e i margini dei figli restano inclusi nella misura)
+    while (panel.firstChild) inner.appendChild(panel.firstChild);
+    panel.appendChild(inner);
+  }
+  // alcune icone sono dimensionate in percentuale della larghezza: l'altezza non scala in modo
+  // proporzionale allo zoom, quindi si misura e si corregge per qualche passo
+  var zoom = 1, avail = panel.clientHeight - 2;
+  inner.style.zoom = 1;
+  for (var i = 0; i < 8 && avail > 0; i++) {
+    var need = inner.getBoundingClientRect().height;
+    if (need <= avail) break;
+    zoom = Math.max(0.5, zoom * avail / need * 0.995);
+    inner.style.zoom = zoom.toFixed(3);
+  }
+}
+
