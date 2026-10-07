@@ -1190,7 +1190,34 @@ DepositB.onclick         = function() { placeNextBox("B"); };
 DepositAB.onclick        = function() { placeNextBox("AB"); };
 DeleteDeposit.onclick    = function() { deleteSelectedBox(); };
 autoFillBtn.onclick      = function() { autoFill();  };
-TreD.onclick             = function() { state.Init = false; sessionStorage.setItem("state", JSON.stringify(state)); window.location.href = "3D.html";  };
+TreD.onclick             = function() { goTo3D(); };
+
+// Passaggio alla vista 3D: rotellina subito, stato in sessionStorage e anche in window.name
+// (window.name resta tra una pagina e l'altra anche se il browser integrato non conserva sessionStorage)
+function goTo3D() {
+  state.Init = false;
+  var json = JSON.stringify(state);
+  try { sessionStorage.setItem("state", json); } catch (e) { }
+  window.name = "PALSTATE:" + json;
+  showLoadingOverlay("Loading 3D view...");
+  setTimeout(function () { window.location.href = "3D.html"; }, 30); // lascia disegnare la rotellina
+}
+
+function showLoadingOverlay(text) {
+  if (!document.getElementById("pcSpinStyle")) {
+    var st = document.createElement("style");
+    st.id = "pcSpinStyle";
+    st.textContent = "@keyframes pcSpin{to{transform:rotate(360deg)}}";
+    document.head.appendChild(st);
+  }
+  var o = document.createElement("div");
+  o.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;z-index:3000;display:flex;flex-direction:column;" +
+    "align-items:center;justify-content:center;background:rgba(230,234,238,0.85);font:600 18px Arial,sans-serif;color:#023047";
+  o.innerHTML = "<div style='width:64px;height:64px;border:7px solid #c9d2da;border-top-color:#09CCB5;border-radius:50%;" +
+    "animation:pcSpin 0.9s linear infinite;margin-bottom:18px'></div><div></div>";
+  o.lastChild.textContent = text;
+  document.body.appendChild(o);
+}
 clearPalletBtn.onclick   = function() { clearPallet(); };
 CentreBoxs.onclick       = function() { snapBoxesToCorner("centre"); };
 snapTopLeft.onclick      = function() { snapBoxesToCorner("top-left"); };

@@ -8,9 +8,9 @@ Option Explicit
 ' ===== Configurazione =====
 Private Const MAX_BOXES As Integer = 60                       ' posizioni per layer nel PLC
 Private Const BACKGROUND_DISPLAY As String = "000 - VBA_code"
-Private Const FILE_PATH_JS As String = "C:\Users\IMA-1\Documents\IMA\PalCompose\RuntimeLayerData.js"
-Private Const FILE_PATH_CSV As String = "C:\Users\IMA-1\Downloads\RuntimeData.csv"
-Private Const BROWSER_URL As String = "file:///C:/Users/IMA-1/Documents/IMA/PalCompose/Index.html"
+Private Const FILE_PATH_JS As String = "C:\IMA\Tools\PalCompose\RuntimeLayerData.js"
+Private Const FILE_PATH_CSV As String = "C:\Users\hmioperator\Downloads\RuntimeData.csv"
+Private Const BROWSER_URL As String = "file:///C:/IMA/Tools/PalCompose/Index.html"
 Private Const CSV_POLL_MS As Long = 500                       ' ogni quanto controllare se la pagina ha salvato
 
 Private Const ROUTINE_NAME As String = "PALCOMPOSE"

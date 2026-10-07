@@ -21,13 +21,13 @@ Fai la Fase 2 solo quando la Fase 1 funziona.
 
 ## 1. Backup (non saltarlo)
 
-1. Copia l'intera cartella attuale `C:\Users\IMA-1\Documents\IMA\PalCompose` in `PalCompose_backup_AAAAMMGG`.
+1. Copia l'intera cartella attuale `C:\IMA\Tools\PalCompose` in `PalCompose_backup_AAAAMMGG`.
 2. In FactoryTalk View Studio: tasto destro sul display **777 - PalCompose** → *Export* (o *Duplicate*) per averne una copia.
 3. Nell'editor VBA del display 777 (Alt+F11), copia tutto il codice di **ThisDisplay** e di **Module1** in un file di testo di backup.
 
 ## 2. Fase 1 – file della pagina
 
-Copia dalla cartella scaricata a `C:\Users\IMA-1\Documents\IMA\PalCompose`, **sovrascrivendo**:
+Copia dalla cartella scaricata a `C:\IMA\Tools\PalCompose`, **sovrascrivendo**:
 
 | Da copiare | Note |
 |------------|------|

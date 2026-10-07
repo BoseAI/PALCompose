@@ -10,6 +10,15 @@
     #toolbar3D .txtBtn { width:110px; font-size:15px; font-weight:600; }
     #info3D { position:absolute; right:12px; bottom:10px; font:13px "Source Sans Pro", system-ui, sans-serif; color:#333;
               background:rgba(255,255,255,.8); padding:6px 10px; border-radius:6px; pointer-events:none; }
+    /* Caricamento: visibile subito, sparisce al primo disegno della scena */
+    #loader3D { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+                background:#e6eaee; z-index:1; font:600 18px "Source Sans Pro", system-ui, sans-serif; color:#023047; }
+    #loader3D .spinner { width:64px; height:64px; border:7px solid #c9d2da; border-top-color:#09CCB5; border-radius:50%;
+                         animation:spin3D 0.9s linear infinite; margin-bottom:18px; }
+    #loader3D.error .spinner { display:none; }
+    #loader3D.error { color:#EA053A; text-align:center; padding:0 40px; }
+    #loader3D .detail { margin-top:10px; font-weight:400; font-size:14px; color:#333; max-width:700px; word-break:break-word; }
+    @keyframes spin3D { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -23,17 +32,45 @@
   <button id="btnLabels" class="defaultabilitato txtBtn">Labels</button>
 </div>
 <div id="info3D"></div>
+<div id="loader3D"><div class="spinner"></div><div id="loaderText">Loading 3D view...</div><div id="loaderDetail" class="detail"></div></div>
+
+<script>
+  // Qualsiasi errore durante il caricamento viene mostrato al posto della rotellina (niente pagina vuota)
+  function show3DError(title, detail) {
+    var l = document.getElementById("loader3D");
+    if (!l) return;
+    l.className = "error";
+    l.style.display = "flex";
+    document.getElementById("loaderText").textContent = title;
+    document.getElementById("loaderDetail").textContent = detail || "";
+  }
+  window.onerror = function (msg, src, line) {
+    if (src && /models\.js$/.test(src)) return false;          // modelli facoltativi
+    show3DError("3D view error", msg + (src ? " (" + src.split("/").pop() + ":" + line + ")" : ""));
+    return false;
+  };
+  window.addEventListener("error", function (e) {              // file non trovati (script)
+    var t = e.target;
+    if (t && t.tagName === "SCRIPT" && !/models\.js$/.test(t.src)) show3DError("File not found", t.src.split("/").slice(-3).join("/"));
+  }, true);
+</script>
 
 <!-- three.js in versione classica (non modulo): funziona anche da file:/// senza server -->
 <script src="./libs/three/three.bundle.js"></script>
 <!-- Facoltativo: modelli 3D incorporati generati con tools/embed-models.bat (robot). Se manca, la pagina funziona lo stesso -->
-<script src="./Assets/3D/models.js"></script>
+<script src="./Assets/3D/models.js" onerror="this.remove()"></script>
 <script>
 (function () {
   "use strict";
 
+  if (typeof THREE === "undefined") { show3DError("3D library not loaded", "libs/three/three.bundle.js"); return; }
+
+  // Stato dal 2D: sessionStorage, oppure window.name se il browser non conserva sessionStorage tra le pagine
   var state = null;
   try { state = JSON.parse(sessionStorage.getItem("state") || "null"); } catch (e) { state = null; }
+  if (!state && typeof window.name === "string" && window.name.indexOf("PALSTATE:") === 0) {
+    try { state = JSON.parse(window.name.substring(9)); } catch (e) { state = null; }
+  }
 
   // ===== BOTTONI =====
   function setupButtonWithSVG3D(button, svgNormal, svgPressed) {
@@ -47,10 +84,14 @@
     release();
   }
   setupButtonWithSVG3D(document.getElementById("2D"), 'svgNormal2D', 'svgPressed2D');
-  document.getElementById("2D").onclick = function () { window.location.href = "Index.html"; };
+  document.getElementById("2D").onclick = function () {
+    var l = document.getElementById("loader3D");
+    l.className = ""; l.style.display = "flex"; document.getElementById("loaderText").textContent = "Loading...";
+    window.location.href = "Index.html";
+  };
 
   if (!state || !state.boxes) {
-    document.getElementById("info3D").textContent = "No configuration data";
+    show3DError("No configuration data", "Return to 2D and press 3D again");
     return;
   }
 
@@ -62,7 +103,9 @@
   var palletW = state.palletReal.w, palletH = state.palletReal.h;
 
   // ===== RENDERER / SCENA =====
-  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  var renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { show3DError("3D not supported by this browser (WebGL not available)", e && e.message); return; }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -313,6 +356,14 @@
     scene.add(m);
   });
 
+  // rettangolo arrotondato compatibile anche con browser senza ctx.roundRect
+  function roundRectPath(g, x, y, w, h, r) {
+    g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
+    g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
+
   // ===== ETICHETTE DEPOSITI (numero + tipo) =====
   var TYPE_COLORS = { A: "#ffb703", B: "#219ebc", AB: "#09b5a0" };
   var labels = new THREE.Group();
@@ -320,7 +371,7 @@
     var c = document.createElement("canvas"); c.width = 160; c.height = 72;
     var g = c.getContext("2d");
     g.fillStyle = TYPE_COLORS[box.depositType] || "#666";
-    g.beginPath(); g.roundRect(4, 4, 152, 64, 14); g.fill();
+    g.beginPath(); roundRectPath(g, 4, 4, 152, 64, 14); g.fill();
     g.lineWidth = 3; g.strokeStyle = "#023047"; g.stroke();
     g.fillStyle = "#023047"; g.font = "bold 38px Arial"; g.textAlign = "center"; g.textBaseline = "middle";
     g.fillText(box.id + " " + box.depositType, 80, 38);
@@ -374,14 +425,15 @@
   // Scena statica: si ridisegna solo quando la vista cambia (niente GPU occupata a vuoto).
   // Solo con il robot animato serve il ciclo continuo.
   var renderPending = false;
-  function render() { renderPending = false; renderer.render(scene, camera); }
+  function hideLoader() { var l = document.getElementById("loader3D"); if (l && l.className !== "error") l.style.display = "none"; }
+  function render() { renderPending = false; renderer.render(scene, camera); hideLoader(); }
   function requestRender() { if (!renderPending) { renderPending = true; requestAnimationFrame(render); } }
   controls.addEventListener("change", requestRender);
   var loopRunning = false;
   function startLoop() {
     if (loopRunning || !animateRobot) return;
     loopRunning = true;
-    (function loop() { requestAnimationFrame(loop); animateRobot(); renderer.render(scene, camera); })();
+    (function loop() { requestAnimationFrame(loop); animateRobot(); renderer.render(scene, camera); hideLoader(); })();
   }
   if (animateRobot) startLoop(); else requestRender();
 

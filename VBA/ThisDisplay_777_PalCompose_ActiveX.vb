@@ -11,7 +11,7 @@ Option Explicit
 ' ===== Configurazione =====
 Private Const MAX_BOXES As Integer = 60                       ' posizioni per layer nel PLC
 Private Const BACKGROUND_DISPLAY As String = "000 - VBA_code"
-Private Const APP_FOLDER As String = "C:\Users\IMA-1\Documents\IMA\PalCompose"   ' cartella con Index.html
+Private Const APP_FOLDER As String = "C:\IMA\Tools\PalCompose"   ' cartella con Index.html
 Private Const START_PAGE As String = "Index.html"
 
 Private Const ROUTINE_NAME As String = "PALCOMPOSE"
