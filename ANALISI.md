@@ -54,13 +54,13 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
 
 ## Problemi trovati e non ancora risolti
 
-1. **La vista 3D non può funzionare da `file:///`.** `3D.html` usa `<script type="module">` e l'importmap: Chromium/WebView2 blocca i moduli caricati da file (errore CORS, verificato). Per questo esiste `VBA.vb` con `python -m http.server`, ma:
-   - `Application.ExecuteCommand` esegue comandi FactoryTalk, non comandi Windows, quindi `cd /d ... && python ...` non parte;
-   - le tre righe `command = ...` si sovrascrivono, resta solo l'ultima.
-
-   Possibili soluzioni:
-   - **(a)** creare un unico file `three.bundle.js` classico (non modulo) che funziona da `file:///`;
-   - **(b)** avviare un piccolo server locale come servizio Windows.
+1. **Vista 3D da `file:///`: RISOLTO.**
+   - `libs/three/three.bundle.js` è three.js r184 in versione classica (non modulo), con OrbitControls/GLTFLoader/OBJLoader. Non usa `import`, che WebView2 blocca da file.
+   - Pallet e casse sono generati nel codice, perché anche la lettura di `.glb`/`.obj` da disco è bloccata.
+   - Ogni deposito è diviso nelle casse reali (NBoxX × NBoxY), disegnate con una sola chiamata di disegno.
+   - La scena si ridisegna solo quando si muove la vista.
+   - Il robot è facoltativo: `tools/embed-models.bat` incorpora i `.obj`/`.glb` di `Assets/3D` in `Assets/3D/models.js`.
+   - `VBA.vb` (server Python) non serve più.
 2. **`robot.html` carica GSAP da internet** (`cdn.jsdelivr.net`). Su una rete di impianto senza internet non funziona: va copiato in `libs/`.
 3. **Percorsi fissi `C:\Users\IMA-1\...`.** Ora sono costanti in cima al codice VBA, ma su un altro PC vanno cambiati a mano.
 4. **Attesa del CSV nell'evento `AnimationStart`.** Se il display viene chiuso senza premere Salva/Esci, il ciclo continua ad aspettare (ora senza consumare CPU).

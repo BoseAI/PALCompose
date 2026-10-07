@@ -118,10 +118,63 @@ function drawBox(box) {
   if (isCollision && box.id != state.selectedId) { ctx.fillStyle = "rgba(255,0,0,1)"; }
   else if (swapMode && swapSelection.length > 0) { ctx.fillStyle = box.id === swapSelection[0].id ? "rgba(9,181,160,1)" : "rgba(255,183,3,1)"; } 
   else { ctx.fillStyle = box.id === state.selectedId ? "rgba(142,202,230,1)" : "rgba(255,183,3,1)"; }
+  var w = mmToPx(box.w);
+  var h = mmToPx(box.h);
+  ctx.save(); // ombra solo sul contorno del deposito
+  ctx.shadowColor = "rgba(0,0,0,0.28)";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 4;
+  ctx.shadowOffsetY = 4;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.restore();
+  drawCaseGrid(box, w, h);
   ctx.strokeStyle = "#023047";
   ctx.lineWidth = 2;
-  ctx.fillRect((-mmToPx(box.w) / 2),-mmToPx(box.h) / 2,mmToPx(box.w),mmToPx(box.h));
-  ctx.strokeRect(-mmToPx(box.w) / 2,-mmToPx(box.h) / 2,mmToPx(box.w),mmToPx(box.h));
+  ctx.strokeRect(-w / 2, -h / 2, w, h);
+}
+
+// Divide il deposito nelle casse che lo compongono (stessa logica nella vista 3D)
+function getCaseGrid(box) {
+  var cw = state.boxSize.w, ch = state.boxSize.h;
+  if (!(cw > 0) || !(ch > 0)) return null;
+  function fit(a, b, rotated) {
+    var nx = Math.round(box.w / a), ny = Math.round(box.h / b);
+    if (nx < 1 || ny < 1) return null;
+    return { nx: nx, ny: ny, rotated: rotated, err: Math.abs(box.w - nx * a) + Math.abs(box.h - ny * b) };
+  }
+  var f1 = fit(cw, ch, false), f2 = fit(ch, cw, true);
+  var best = !f1 ? f2 : !f2 ? f1 : (f2.err < f1.err ? f2 : f1);
+  if (!best || best.err > Math.max(cw, ch) * 0.25 || best.nx * best.ny > 100) return null;
+  return best;
+}
+
+// Casse con effetto cartone: luce dall'alto, bordo, nastro adesivo lungo il lato lungo
+function drawCaseGrid(box, w, h) {
+  var g = getCaseGrid(box);
+  var nx = g ? g.nx : 1, ny = g ? g.ny : 1;
+  var cw = w / nx, ch = h / ny;
+  var inset = Math.min(2, cw * 0.05, ch * 0.05);
+  var shade = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2);
+  shade.addColorStop(0, "rgba(0,0,0,0.10)");
+  shade.addColorStop(1, "rgba(255,255,255,0.30)");
+  var tapeAlongX = cw >= ch;
+  var tape = Math.min(cw, ch) * 0.16;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(2,48,71,0.45)";
+  for (var i = 0; i < nx; i++) {
+    for (var j = 0; j < ny; j++) {
+      var x = -w / 2 + i * cw, y = -h / 2 + j * ch;
+      ctx.save();
+      ctx.translate(x + cw / 2, y + ch / 2);
+      ctx.fillStyle = shade;
+      ctx.fillRect(-cw / 2 + inset, -ch / 2 + inset, cw - 2 * inset, ch - 2 * inset);
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
+      if (tapeAlongX) ctx.fillRect(-cw / 2 + inset, -tape / 2, cw - 2 * inset, tape);
+      else ctx.fillRect(-tape / 2, -ch / 2 + inset, tape, ch - 2 * inset);
+      ctx.strokeRect(-cw / 2 + inset, -ch / 2 + inset, cw - 2 * inset, ch - 2 * inset);
+      ctx.restore();
+    }
+  }
 }
 
 function drawBoxText(box) {
