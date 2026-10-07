@@ -536,20 +536,22 @@ Public Sub WaitMs(ByVal I_dTimeToWait As Double)
 End Sub
 
 ' ====== Numero -> testo con il punto decimale ======
+' Le funzioni di testo sono scritte come VBA.Left$ ecc.: nel VBA di FactoryTalk il nome Left
+' e' anche una proprieta' degli oggetti grafici e senza il prefisso VBA. il compilatore si confonde.
 ' CStr usa le impostazioni internazionali di Windows: in italiano 12.5 diventa "12,5"
 ' e il JSON letto dalla pagina non e' piu' valido. Str$ usa sempre il punto.
 Public Function NumToText(ByVal v As Variant) As String
     Dim s As String
-    s = Trim$(Str$(v))
-    If Left$(s, 1) = "." Then s = "0" & s
-    If Left$(s, 2) = "-." Then s = "-0" & Mid$(s, 2)
+    s = VBA.Trim$(VBA.Str$(v))
+    If VBA.Left$(s, 1) = "." Then s = "0" & s
+    If VBA.Left$(s, 2) = "-." Then s = "-0" & VBA.Mid$(s, 2)
     NumToText = s
 End Function
 
 ' ====== Testo -> numero con il punto decimale ======
 ' CDbl("12.5") con impostazioni italiane restituisce 125. Val usa sempre il punto.
 Public Function TextToNum(ByVal s As Variant) As Double
-    TextToNum = Val(Trim$(CStr(s)))
+    TextToNum = VBA.Val(VBA.Trim$(VBA.CStr(s)))
 End Function
 
 ]]>
