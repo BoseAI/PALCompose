@@ -31,7 +31,7 @@ ActiveX/
 2. **Chiudere FactoryTalk View Studio e Client.**
 3. Doppio clic su `install.bat` e accettare la richiesta di amministratore.
    Lo script:
-   - copia i file in `C:\Program Files\PalCompose\ActiveX`;
+   - copia i file in `C:\Program Files\PalCompose\ActiveX\<data_ora>`, una cartella nuova a ogni installazione: i file di una versione in uso non vengono mai sovrascritti, quindi niente "Sharing violation"; le cartelle vecchie si cancellano da sole quando non sono più in uso;
    - li sblocca (file scaricati da internet);
    - registra il controllo sia a 32 sia a 64 bit.
 
