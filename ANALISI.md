@@ -65,7 +65,7 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
 3. **Percorsi fissi `C:\Users\IMA-1\...`.** Ora sono costanti in cima al codice VBA, ma su un altro PC vanno cambiati a mano.
 4. **Attesa del CSV nell'evento `AnimationStart`.** Se il display viene chiuso senza premere Salva/Esci, il ciclo continua ad aspettare (ora senza consumare CPU).
 5. **File mancanti o fuori posto nel repository.**
-   - Le icone sono in `icon/`, mentre l'HTML le cerca in `Assets/Icon/`.
+   - Icone: RISOLTO, spostate in `Assets/Icon/` e corretti i nomi `_notpressed` → `_Notpressed` in `index.html`.
    - Mancano `Assets/3D/*.glb`/`.obj` e `libs/three/examples/jsm/`.
    - `libs/three/build` contiene 11 MB di build non usate: serve solo `three.module.js`.
    - `style3D.css` è identico a `style.css`.
