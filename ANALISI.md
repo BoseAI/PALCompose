@@ -58,7 +58,7 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
    - Pallet e casse sono generati nel codice, perché anche la lettura di `.glb`/`.obj` da disco è bloccata.
    - Ogni deposito è diviso nelle casse reali (NBoxX × NBoxY), disegnate con una sola chiamata di disegno.
    - La scena si ridisegna solo quando si muove la vista.
-   - Il robot è facoltativo: `tools/embed-models.bat` incorpora i `.obj`/`.glb` di `Assets/3D` in `Assets/3D/models.js`.
+   - Robot: pallettizzatore 4 assi costruito nel codice (`Functions/3d/robot3d.js`) con simulazione del ciclo (`sim3d.js`); nessun modello esterno.
    - `VBA.vb` (server Python) eliminato: non serve più.
 2. **`robot.html`** (pagina di prova che caricava GSAP da internet): eliminata.
 3. **Percorsi fissi `C:\Users\IMA-1\...`.** Ora sono costanti in cima al codice VBA, ma su un altro PC vanno cambiati a mano.
