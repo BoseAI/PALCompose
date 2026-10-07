@@ -222,48 +222,45 @@ function drawCaseGrid(box, w, h) {
   }
 }
 
-// Riquadro informazioni del deposito: centrato in orizzontale, nella parte bassa del deposito
-// ma sopra la fascia dell'etichetta (che sta sul bordo destro o sull'angolo destra/basso)
+// Informazioni del deposito nell'angolo in alto a sinistra (come prima), spostate verso l'interno
+// della fascia dell'etichetta così non la coprono con nessuna rotazione; contorno chiaro per leggerle
+// su qualsiasi colore senza riquadro
 var ANGLE_ARROWS = { 0: "\u2192", 90: "\u2191", 180: "\u2190", 270: "\u2193" };
 function drawBoxText(box) {
   var w = mmToPx(box.w), h = mmToPx(box.h);
-  var cx = mmToPx(box.x + box.w / 2);
-  var bottom = -mmToPx(box.y);                         // in questo contesto la Y cresce verso il basso
-  var top = -mmToPx(box.y + box.h);
-  var title = box.id + "  " + box.depositType;
-  var line2 = "X " + Math.ceil(box.x + box.w / 2) + "   Y " + Math.ceil(box.y + box.h / 2);
-  var line3 = (ANGLE_ARROWS[box.angle] || "") + "  " + box.angle + "\u00B0";
-  var titleSize = 46, infoSize = 34, pad = 10, gap = 6;
-  // larghezza disponibile: lascia libera la fascia dell'etichetta sul lato destro
   var labelBand = Math.max(3, mmToPx(LABEL_THICK)) + 6;
-  var maxW = w - 2 * labelBand;
-  ctx.font = "bold " + titleSize + "px Arial";
-  var tw = ctx.measureText(title).width;
-  ctx.font = infoSize + "px Arial";
-  tw = Math.max(tw, ctx.measureText(line2).width, ctx.measureText(line3).width);
-  var k = Math.min(1, (maxW - 2 * pad) / tw, (h - 2 * labelBand) / (titleSize + 2 * infoSize + 2 * gap + 2 * pad));
-  if (!(k > 0.35)) k = 0.35;                           // deposito molto piccolo: testo minimo leggibile
-  titleSize *= k; infoSize *= k; pad *= k; gap *= k;
-  var panelW = tw * k + 2 * pad;
-  var panelH = titleSize + 2 * infoSize + 2 * gap + 2 * pad;
-  var y0 = Math.max(top + 4, bottom - labelBand - panelH); // il più in basso possibile, sopra l'etichetta
-  var x0 = cx - panelW / 2;
+  var x0 = mmToPx(box.x) + labelBand;
+  var y0 = -mmToPx(box.y + box.h) + labelBand;        // bordo alto del deposito (la Y cresce verso il basso)
+  var lines = [
+    { text: box.id + "  " + box.depositType + "  " + (ANGLE_ARROWS[box.angle] || ""), bold: true },
+    { text: "X: " + Math.ceil(box.x + box.w / 2) },
+    { text: "Y: " + Math.ceil(box.y + box.h / 2) },
+    { text: "Rot: " + box.angle + "\u00B0" }
+  ];
+  var boldSize = 38, size = 30;
+  // deposito stretto o basso: il testo si riduce per restarci dentro
+  ctx.font = "bold " + boldSize + "px Arial";
+  var tw = ctx.measureText(lines[0].text).width;
+  ctx.font = size + "px Arial";
+  for (var i = 1; i < lines.length; i++) tw = Math.max(tw, ctx.measureText(lines[i].text).width);
+  var totalH = boldSize + 3 * size + 3 * 4;
+  var k = Math.min(1, (w - 2 * labelBand) / tw, (h - 2 * labelBand) / totalH);
+  if (!(k > 0.4)) k = 0.4;
   ctx.save();
-  ctx.fillStyle = box.id === state.selectedId ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.82)";
-  ctx.strokeStyle = "rgba(2,48,71,0.55)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(x0, y0, panelW, panelH, 6 * k); else ctx.rect(x0, y0, panelW, panelH);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#023047";
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.font = "bold " + titleSize + "px Arial";
-  ctx.fillText(title, cx, y0 + pad);
-  ctx.font = infoSize + "px Arial";
-  ctx.fillText(line2, cx, y0 + pad + titleSize + gap);
-  ctx.fillText(line3, cx, y0 + pad + titleSize + infoSize + 2 * gap);
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.fillStyle = "#023047";
+  var y = y0;
+  for (var j = 0; j < lines.length; j++) {
+    var fs = (lines[j].bold ? boldSize : size) * k;
+    ctx.font = (lines[j].bold ? "bold " : "") + fs + "px Arial";
+    ctx.lineWidth = Math.max(2, fs * 0.18);
+    ctx.strokeText(lines[j].text, x0, y);
+    ctx.fillText(lines[j].text, x0, y);
+    y += fs + 4 * k;
+  }
   ctx.restore();
 }
 
