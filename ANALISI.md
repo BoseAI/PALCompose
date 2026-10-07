@@ -76,8 +76,8 @@ Il codice nel file XML del display **non è stato modificato**. La versione corr
 | Soluzione | Come | Pro | Contro |
 |-----------|------|-----|--------|
 | **A. Attuale migliorata** (fatto) | File JS + download CSV | Nessuna installazione | Dipende dalla cartella Download e dal comportamento dei download di WebView2 |
-| **B. Ponte diretto controllo ↔ VBA** | Se `SEWebBrowser` espone un metodo per eseguire script o un evento per i messaggi dalla pagina, il VBA passa i dati alla pagina e riceve il salvataggio senza file | Niente file, niente cartella Download, aggiornamento immediato | Da verificare quali metodi/eventi espone il controllo v14 (Object Browser nel VBA → `SEWEBBROWSERLib`) |
+| **B. Ponte diretto controllo ↔ VBA** | ~~Scartata~~ | | Verificato in impianto: `SEWebBrowser` v14 ha solo `Back`, `Forward`, `InitialURL`, `Refresh`, `ShowAddressBar`, `Stop`, `URL`, `UseParameter`, senza eventi né esecuzione di script; `URL` letta dal VBA resta quella impostata (non segue la navigazione della pagina), quindi non si può usare per il ritorno dei dati |
 | **C. Server locale** (Node-RED / Python / .NET) + OPC UA o FactoryTalk Linx | La pagina legge e scrive i tag via HTTP/WebSocket | Architettura pulita; risolve anche la vista 3D (pagina servita via http) | Un servizio da installare e mantenere |
 | **D. FactoryTalk Optix** | Piattaforma Rockwell con web e OPC UA nativi | Moderna | È una migrazione |
 
-Prossimo passo consigliato: aprire l'**Object Browser** (F2 nell'editor VBA), selezionare la libreria `SEWEBBROWSERLib` e inviare la lista di metodi ed eventi di `WebBrowserCtrl`. Se c'è un modo per eseguire script o ricevere messaggi, la soluzione B elimina del tutto i file.
+Conclusione: con il controllo attuale il ritorno dati dalla pagina può avvenire solo tramite file (download) o tramite un server locale (C). La soluzione A, con le correzioni fatte, resta quella consigliata finché non si vuole installare un servizio.
