@@ -15,6 +15,7 @@ Private Const APP_FOLDER As String = "C:\Users\IMA-1\Documents\IMA\PalCompose"  
 Private Const START_PAGE As String = "Index.html"
 
 Private Const ROUTINE_NAME As String = "PALCOMPOSE"
+Private Const TAG_LAYER_TYPE As String = "Internal_tag\PalCompose\L_St_xLayerType"   ' True = LayerA
 ' Etichetta ad angolo (1) o laterale (0): solo lettura, passato alla pagina per la visualizzazione
 Private Const TAG_CORNER_LABELLING As String = "[clogix]SizeWork.Outfeed.CornerLabelling"
 
@@ -242,6 +243,41 @@ Private mLayerType As String
 Private mBusy As Boolean
 
 
+' Tipo di layer da editare (True = LayerA).
+' Se il display di appoggio "000 - VBA_code" e' caricato si usa la sua ReadTag_Any, come prima;
+' altrimenti il tag si legge direttamente, senza aprire altri display (necessario nel Test Display di Studio,
+' dove FactoryTalk non permette di caricare display).
+Private Function ReadLayerTypeIsA() As Boolean
+    Dim collLoaded As Displays
+    Dim oBg As Object
+    Dim i As Integer
+    Dim iRetVal As Integer
+    Dim xLayerType As Boolean
+    Dim sErrorCode As String
+    Dim tg As TagGroup
+    Dim sl As StringList
+
+    Set collLoaded = LoadedDisplays
+    For i = 1 To collLoaded.Count
+        If collLoaded.Item(i).Name = BACKGROUND_DISPLAY Then Set oBg = collLoaded.Item(i): Exit For
+    Next i
+    If Not oBg Is Nothing Then
+        iRetVal = oBg.ReadTag_Any("{" & TAG_LAYER_TYPE & "}", xLayerType, sErrorCode)
+        ReadLayerTypeIsA = (iRetVal = 4) And (xLayerType <> 0)
+        Exit Function
+    End If
+
+    On Error GoTo NoTag
+    Set tg = Application.CreateTagGroup(Me.AreaName)
+    tg.Add TAG_LAYER_TYPE
+    tg.Active = True
+    If tg.RefreshFromSource(sl) Then ReadLayerTypeIsA = (tg.Item(TAG_LAYER_TYPE).value <> 0)
+    Exit Function
+NoTag:
+    Application.LogDiagnosticsMessage "Routine: " & ROUTINE_NAME & " - tipo layer non leggibile (" & TAG_LAYER_TYPE & "): uso LayerB"
+End Function
+
+
 Private Sub Display_AnimationStart()
 
     Dim collLodedDisplayList As Displays
@@ -255,24 +291,11 @@ Private Sub Display_AnimationStart()
     On Error GoTo ErrHandler
     mBusy = False
 
-    ' --- Recupero display background ---
-    Set collLodedDisplayList = LoadedDisplays
-    For i = 1 To collLodedDisplayList.Count
-        If collLodedDisplayList.Item(i).Name = BACKGROUND_DISPLAY Then
-            Set oBackgroundDisplay = collLodedDisplayList.Item(i)
-            Exit For
-        End If
-    Next i
-    If oBackgroundDisplay Is Nothing Then
-        Set oBackgroundDisplay = Application.ShowDisplay(BACKGROUND_DISPLAY, "/ZA")
-    End If
-
     ' --- Creazione strutture layer (restano in memoria fino al salvataggio) ---
     Set mLayerCompositionA = CreateLayerStructure("LayerA")
     Set mLayerCompositionB = CreateLayerStructure("LayerB")
 
-    iRetVal = oBackgroundDisplay.ReadTag_Any("{Internal_tag\PalCompose\L_St_xLayerType}", xLayerType, sErrorCode)
-    If (iRetVal = 4) And (xLayerType <> 0) Then
+    If ReadLayerTypeIsA() Then
         mLayerType = "LayerA"
         Set runtimeValuesLayer = BuildPalletValues(mLayerCompositionA, mLayerType)
     Else
