@@ -223,8 +223,7 @@ function drawCaseGrid(box, w, h) {
 }
 
 // Informazioni del deposito nell'angolo in alto a sinistra (come prima), spostate verso l'interno
-// della fascia dell'etichetta così non la coprono con nessuna rotazione; contorno chiaro per leggerle
-// su qualsiasi colore senza riquadro
+// della fascia dell'etichetta così non la coprono con nessuna rotazione
 var ANGLE_ARROWS = { 0: "\u2192", 90: "\u2191", 180: "\u2190", 270: "\u2193" };
 function drawBoxText(box) {
   var w = mmToPx(box.w), h = mmToPx(box.h);
@@ -249,15 +248,11 @@ function drawBoxText(box) {
   ctx.save();
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(255,255,255,0.85)";
   ctx.fillStyle = "#023047";
   var y = y0;
   for (var j = 0; j < lines.length; j++) {
     var fs = (lines[j].bold ? boldSize : size) * k;
     ctx.font = (lines[j].bold ? "bold " : "") + fs + "px Arial";
-    ctx.lineWidth = Math.max(2, fs * 0.18);
-    ctx.strokeText(lines[j].text, x0, y);
     ctx.fillText(lines[j].text, x0, y);
     y += fs + 4 * k;
   }
