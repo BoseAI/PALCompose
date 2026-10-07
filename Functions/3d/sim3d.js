@@ -103,6 +103,7 @@
     else if (s.lead) {
       showGroup(0, { x: C.pick.x, y: C.pick.y, z: lerp(C.conveyor.zStart + 300, C.pick.z, ease(s.f)) });
       label = "Deposit 1/" + N + " · Infeed";
+      C.setGripperSize(deps[0].box.w, deps[0].box.h);
     } else if (s.done) {
       placed = N; label = "Completed · " + N + "/" + N;
     } else {

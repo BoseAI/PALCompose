@@ -16,7 +16,7 @@
   var A1 = 320;      // distanza orizzontale asse J1 - asse J2
   var L1 = 1350;     // braccio (J2 -> J3)
   var L2 = 1450;     // avambraccio (J3 -> polso)
-  var GRIP_H = 290;  // dal punto polso alla superficie di presa (sotto la pinza)
+  var GRIP_H = 330;  // dal punto polso alla superficie di presa (bocca delle ventose)
 
   // Posizione: angolo in alto a sinistra del pallet in 2D = (-X, -Z) in 3D
   var BASE = { x: -P.palletW / 2 - 950, z: -P.palletH / 2 - 950 };
@@ -38,6 +38,8 @@
   var dark = new THREE.MeshStandardMaterial({ color: 0x2b2f33, metalness: 0.4, roughness: 0.55 });
   var steel = new THREE.MeshStandardMaterial({ color: 0x9aa1a8, metalness: 0.7, roughness: 0.35 });
   var rubber = new THREE.MeshStandardMaterial({ color: 0x3a3f44, roughness: 0.8 });
+  var white = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, metalness: 0.1, roughness: 0.5 });
+  var cupMat = new THREE.MeshStandardMaterial({ color: 0x141618, roughness: 0.7 });
 
   function box(sx, sy, sz, mat) {
     var m = new THREE.Mesh(new THREE.BoxGeometry(sx * MM, sy * MM, sz * MM), mat);
@@ -85,22 +87,38 @@
   var paraRod = link(70, 70, steel); paraRod.userData.z = 150 * MM;  // asta del parallelogramma (di lato)
   var elbowJoint = cyl(130, 300, dark); elbowJoint.rotation.x = Math.PI / 2; turret.add(elbowJoint);
 
-  // Polso + pinza: restano verticali, ruotano solo attorno a Y (J4)
+  // Polso + testa di presa: restano verticali, ruotano solo attorno a Y (J4)
+  // Testa bianca a ventose: grande quanto il deposito, ventose nere distribuite su tutta la superficie
   var wrist = new THREE.Group();
   robot.add(wrist);
   wrist.add(at(box(210, 220, 210, yellow), 0, -110, 0));
-  wrist.add(at(cyl(120, 30, dark), 0, -235, 0));                     // flangia
-  var plate = at(box(600, 40, 500, dark), 0, -270, 0);               // piastra pinza (dimensionata sul deposito)
-  wrist.add(plate);
-  var fingers = [];
-  for (var i = 0; i < 4; i++) { var f = box(40, 160, 40, steel); wrist.add(f); fingers.push(f); }
+  wrist.add(at(cyl(120, 20, dark), 0, -230, 0));                     // flangia
+  var head = at(box(600, 50, 500, white), 0, -265, 0);               // testa (dimensionata sul deposito)
+  wrist.add(head);
+  var cups = new THREE.Group();                                      // ventose (rigenerate per ogni deposito)
+  wrist.add(cups);
+  var CUP_R = 32, CUP_H = 40, CUP_PITCH = 125;
+  var cupGeo = new THREE.CylinderGeometry(CUP_R * MM, CUP_R * 0.8 * MM, CUP_H * MM, 20);
   var wristJoint = cyl(110, 260, dark); wristJoint.rotation.x = Math.PI / 2; turret.add(wristJoint);
 
-  // Dimensiona la pinza sul deposito (mm, assi della scena)
+  // Dimensiona testa e ventose sul deposito (mm, assi della scena)
+  var gripSize = "";
   function setGripperSize(w, d) {
-    plate.scale.set((w + 40) / 600, 1, (d + 40) / 500);
-    var hx = (w / 2 + 20) * MM, hz = (d / 2 + 20) * MM;
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s, k) { fingers[k].position.set(s[0] * hx, -330 * MM, s[1] * hz); });
+    var key = Math.round(w) + "x" + Math.round(d);
+    if (key === gripSize) return;
+    gripSize = key;
+    head.scale.set((w + 20) / 600, 1, (d + 20) / 500);
+    while (cups.children.length) cups.remove(cups.children[0]);
+    var nx = Math.max(1, Math.floor((w - 40) / CUP_PITCH) + 1), nz = Math.max(1, Math.floor((d - 40) / CUP_PITCH) + 1);
+    var px = nx > 1 ? (w - 80) / (nx - 1) : 0, pz = nz > 1 ? (d - 80) / (nz - 1) : 0;
+    for (var i = 0; i < nx; i++) {
+      for (var j = 0; j < nz; j++) {
+        var c = new THREE.Mesh(cupGeo, cupMat);
+        c.castShadow = true;
+        c.position.set((-(nx - 1) * px / 2 + i * px) * MM, -(290 + CUP_H / 2) * MM, (-(nz - 1) * pz / 2 + j * pz) * MM);
+        cups.add(c);
+      }
+    }
   }
   setGripperSize(600, 500);
 

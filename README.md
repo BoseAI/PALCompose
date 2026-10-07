@@ -53,7 +53,7 @@ Senza PLC la pagina parte dai dati di `defaultPlcData`. In produzione `engineeri
 | File | Contenuto |
 |------|-----------|
 | `scene3d.js` | scena, pallet, casse e etichette, telecamera; espone `window.PC3D` |
-| `robot3d.js` | robot pallettizzatore 4 assi (stile FANUC M-410, costruito nel codice) e nastro a rulli |
+| `robot3d.js` | robot pallettizzatore 4 assi (stile FANUC M-410, costruito nel codice) con testa bianca a ventose nere, e nastro a rulli |
 | `sim3d.js` | simulazione del ciclo: presa dal nastro, trasferimento ad arco, approccio, posa; comandi di riproduzione |
 
 Pulsante **Robot** nella vista 3D: mostra robot e nastro (angolo in alto a sinistra del pallet) e la barra
