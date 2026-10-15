@@ -76,17 +76,20 @@ Option Explicit
 Private Const MAX_BOXES As Integer = 60                       ' posizioni per layer nel PLC
 Private Const BACKGROUND_DISPLAY As String = "000 - VBA_code"
 Private Const FILE_PATH_JS As String = "C:\IMA\Tools\PalCompose\RuntimeLayerData.js"
-Private Const FILE_PATH_CSV As String = "C:\Users\hmioperator\Downloads\RuntimeData.csv"
 Private Const BROWSER_URL As String = "file:///C:/IMA/Tools/PalCompose/Index.html"
 Private Const CSV_POLL_MS As Long = 500                       ' ogni quanto controllare se la pagina ha salvato
-' Diagnosi del browser (pagina bianca, DeskLock): True = a ogni apertura scrive nella Diagnostics List
-' utente, processi WebView2, permessi e criteri di Windows. Rimettere a False quando il problema e' risolto.
-Private Const DIAG_BROWSER As Boolean = True
 
 Private Const ROUTINE_NAME As String = "PALCOMPOSE"
 Private Const TAG_LAYER_TYPE As String = "Internal_tag\PalCompose\L_St_xLayerType"   ' True = LayerA
 ' Etichetta ad angolo (1) o laterale (0): solo lettura, passato alla pagina per la visualizzazione
 Private Const TAG_CORNER_LABELLING As String = "[clogix]SizeWork.Outfeed.CornerLabelling"
+
+
+' CSV salvato dalla pagina nei Download dell'utente Windows che usa FactoryTalk
+' (cosi' funziona anche se il pannello gira con un altro utente, es. DeskLock)
+Private Function FILE_PATH_CSV() As String
+    FILE_PATH_CSV = VBA.Environ$("USERPROFILE") & "\Downloads\RuntimeData.csv"
+End Function
 
 
 Function CreateLayerStructure(LayerType As String) As Object
@@ -419,11 +422,6 @@ Private Sub Display_AnimationStart()
     Set ctrl = Me.Application.ActiveDisplay.FindElement("SEWebBrowserControl1")
     ctrl.url = BROWSER_URL
 
-    If DIAG_BROWSER Then
-        WaitMs 4000                                           ' tempo per l'avvio del browser
-        DiagnoseBrowser
-    End If
-
     ' --- Attesa del salvataggio dalla pagina (senza occupare la CPU) ---
     Do While Not fso.FileExists(FILE_PATH_CSV)
         WaitMs CSV_POLL_MS
@@ -529,126 +527,6 @@ ErrHandler:
     If Not file Is Nothing Then file.Close
     Resume GoBack
 
-End Sub
-
-' =====================================================================================
-'  Diagnosi pagina bianca: gira con l'utente che sta usando FactoryTalk (es. utente DeskLock)
-'  e scrive nella Diagnostics List righe "PALCOMPOSE DIAG" con la causa probabile.
-' =====================================================================================
-Private Sub DiagLog(ByVal msg As String)
-    Application.LogDiagnosticsMessage "PALCOMPOSE DIAG - " & msg
-End Sub
-
-Private Function RegValue(sh As Object, ByVal key As String) As String
-    On Error Resume Next
-    Dim v As Variant
-    v = sh.RegRead(key)
-    If Err.Number <> 0 Then RegValue = "" Else RegValue = CStr(v)
-    Err.Clear
-End Function
-
-' Prova a creare e cancellare un file nella cartella: True se l'utente puo' scriverci
-Private Function CanWrite(fso As Object, ByVal folder As String) As Boolean
-    On Error Resume Next
-    Dim f As String, t As Object
-    f = folder & "\~palcompose_test.tmp"
-    Set t = fso.CreateTextFile(f, True)
-    If Err.Number = 0 Then t.Close: fso.DeleteFile f, True: CanWrite = (Err.Number = 0) Else CanWrite = False
-    Err.Clear
-End Function
-
-Private Sub DiagnoseBrowser()
-    On Error Resume Next
-    Dim fso As Object, sh As Object, wmi As Object, procs As Object, pr As Object
-    Dim user As String, dom As String, me_user As String, exeDir As String
-    Dim wvTotal As Long, wvMine As Long, rc As Variant, pu As Variant, pd As Variant
-    Dim runtime As String, cause As String, i As Integer, s As String
-    Dim lad As String, ladOk As Boolean, idxOk As Boolean, restrictRun As String, noDrives As Long, noView As Long
-    Dim fld As Object, wvFolders As String, wvBlocked As String
-
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    Set sh = CreateObject("WScript.Shell")
-    me_user = VBA.LCase$(VBA.Environ$("USERNAME"))
-    DiagLog "utente Windows: " & VBA.Environ$("USERDOMAIN") & "\" & VBA.Environ$("USERNAME")
-
-    ' 1) WebView2 Runtime installato?
-    runtime = RegValue(sh, "HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv")
-    If runtime = "" Then runtime = RegValue(sh, "HKLM\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv")
-    If runtime = "" Then runtime = RegValue(sh, "HKCU\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}\pv")
-    DiagLog "WebView2 Runtime: " & IIf(runtime = "", "NON TROVATO", runtime)
-
-    ' 2) Processi del browser e cartella del Client
-    Set wmi = GetObject("winmgmts:\\.\root\cimv2")
-    Set procs = wmi.ExecQuery("SELECT * FROM Win32_Process WHERE Name='msedgewebview2.exe'")
-    For Each pr In procs
-        wvTotal = wvTotal + 1
-        rc = pr.GetOwner(pu, pd)
-        If VBA.LCase$(CStr(pu)) = me_user Then wvMine = wvMine + 1
-    Next
-    DiagLog "processi msedgewebview2.exe: " & wvTotal & " (di questo utente: " & wvMine & ")"
-    Set procs = wmi.ExecQuery("SELECT ExecutablePath FROM Win32_Process WHERE Name='DisplayClient.exe'")
-    For Each pr In procs
-        If Not IsNull(pr.ExecutablePath) Then exeDir = fso.GetParentFolderName(pr.ExecutablePath)
-    Next
-    If exeDir <> "" Then
-        DiagLog "cartella Client: " & exeDir & " - scrivibile: " & IIf(CanWrite(fso, exeDir), "SI", "NO")
-        For Each fld In fso.GetFolder(exeDir).SubFolders
-            If VBA.InStr(1, fld.Name, "WebView2", vbTextCompare) > 0 Then
-                wvFolders = wvFolders & fld.Path & "; "
-                If Not CanWrite(fso, fld.Path) Then wvBlocked = wvBlocked & fld.Path & "; "
-            End If
-        Next
-        DiagLog "cartelle dati WebView2 nel Client: " & IIf(wvFolders = "", "nessuna", wvFolders) & _
-                IIf(wvBlocked = "", "", " - NON SCRIVIBILI: " & wvBlocked)
-    End If
-
-    ' 3) Cartella dati dell'utente e pagina
-    lad = VBA.Environ$("LOCALAPPDATA")
-    ladOk = CanWrite(fso, lad)
-    DiagLog "LOCALAPPDATA: " & lad & " - scrivibile: " & IIf(ladOk, "SI", "NO")
-    Dim t As Object
-    Set t = fso.OpenTextFile(VBA.Replace(VBA.Mid$(BROWSER_URL, 9), "/", "\"), 1)
-    idxOk = (Err.Number = 0): Err.Clear
-    If idxOk Then t.Close
-    DiagLog "pagina " & BROWSER_URL & " leggibile: " & IIf(idxOk, "SI", "NO")
-
-    ' 4) Criteri di Windows impostati da DeskLock
-    restrictRun = RegValue(sh, "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\RestrictRun")
-    noDrives = Val(RegValue(sh, "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoDrives")) Or _
-               Val(RegValue(sh, "HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoDrives"))
-    noView = Val(RegValue(sh, "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoViewOnDrive")) Or _
-             Val(RegValue(sh, "HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoViewOnDrive"))
-    s = ""
-    If restrictRun = "1" Then
-        For i = 1 To 40
-            If RegValue(sh, "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\RestrictRun\" & i) <> "" Then _
-                s = s & RegValue(sh, "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\RestrictRun\" & i) & ","
-        Next
-    End If
-    DiagLog "criteri: RestrictRun=" & IIf(restrictRun = "", "0", restrictRun) & IIf(s = "", "", " (" & s & ")") & _
-            " DisallowRun=" & IIf(RegValue(sh, "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun") = "", "0", "1") & _
-            " NoDrives=" & noDrives & " NoViewOnDrive=" & noView & _
-            " Shell=" & RegValue(sh, "HKCU\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\Shell")
-
-    ' 5) Causa probabile
-    If runtime = "" Then
-        cause = "WebView2 Runtime non installato per questo PC/utente: installarlo (Evergreen Runtime)"
-    ElseIf Not idxOk Then
-        cause = "l'utente non puo' leggere la pagina: dare permesso Lettura su C:\IMA\Tools\PalCompose"
-    ElseIf (noView And 4) <> 0 Or (noDrives And 4) <> 0 Then
-        cause = "DeskLock blocca il disco C: (NoDrives/NoViewOnDrive): il browser non puo' aprire file:///C:/..."
-    ElseIf wvMine = 0 And restrictRun = "1" And VBA.InStr(1, s, "msedgewebview2", vbTextCompare) = 0 Then
-        cause = "DeskLock consente solo i programmi in elenco: aggiungere msedgewebview2.exe"
-    ElseIf wvMine = 0 And wvBlocked <> "" Then
-        cause = "cartella dati WebView2 non scrivibile: dare permesso Modifica all'utente su " & wvBlocked
-    ElseIf wvMine = 0 And Not ladOk Then
-        cause = "LOCALAPPDATA non scrivibile: il browser non puo' creare la sua cartella dati"
-    ElseIf wvMine = 0 Then
-        cause = "il browser non si avvia per questo utente: vedere Visualizzatore eventi > Applicazione (msedgewebview2)"
-    Else
-        cause = "il browser e' partito: la pagina e' bloccata dopo l'avvio (inviare queste righe)"
-    End If
-    DiagLog "CAUSA PROBABILE: " & cause
 End Sub
 
 ]]>
